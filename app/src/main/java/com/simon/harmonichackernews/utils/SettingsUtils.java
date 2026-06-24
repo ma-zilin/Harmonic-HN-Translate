@@ -58,6 +58,9 @@ public class SettingsUtils {
     public static final String PREF_WEBVIEW_READER_MODE_FONT_SIZE = "pref_webview_reader_mode_font_size";
     public static final String PREF_ARCHIVE_REDIRECT_DOMAINS = "pref_archive_redirect_domains";
     public static final String PREF_STORIES_TO_CACHE = "pref_stories_to_cache";
+    public static final String PREF_TRANSLATE_ENABLED = "pref_translate_enabled";
+    public static final String PREF_TRANSLATE_AUTO_MODE = "pref_translate_auto_mode";
+    public static final String PREF_TRANSLATE_TARGET_LANGUAGE = "pref_translate_target_language";
     public static final String PREF_FAVICON_PROVIDER = "pref_favicon_provider";
     public static final String PREF_ADDITIONAL_FRONTPAGES = "pref_additional_frontpages";
     public static final String FRONT_PAGE_CLASSIC = "Classic";
@@ -948,6 +951,20 @@ public class SettingsUtils {
     public static boolean shouldUseAlgoliaAPI(Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
         return "algolia".equals(prefs.getString("pref_comments_provider", "algolia"));
+    }
+
+    public static boolean isTranslationEnabled(Context ctx) {
+        return getBooleanPref(PREF_TRANSLATE_ENABLED, false, ctx);
+    }
+
+    public static boolean isAutoTranslate(Context ctx) {
+        return isTranslationEnabled(ctx) && getBooleanPref(PREF_TRANSLATE_AUTO_MODE, false, ctx);
+    }
+
+    public static String getTranslateTargetLanguage(Context ctx) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        return prefs.getString(PREF_TRANSLATE_TARGET_LANGUAGE,
+                java.util.Locale.getDefault().getLanguage());
     }
 
     public static boolean getBooleanPref(String key, boolean backup, Context ctx) {

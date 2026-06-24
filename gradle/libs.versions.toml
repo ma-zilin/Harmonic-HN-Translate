@@ -35,6 +35,7 @@ jsoup = "org.jsoup:jsoup:1.22.2"
 coil = "io.coil-kt:coil:2.7.0"
 
 mlkit-genai-summarization = "com.google.mlkit:genai-summarization:1.0.0-beta1"
+mlkit-translate = "com.google.mlkit:translate:17.0.3"
 
 markwon-core = "io.noties.markwon:core:4.6.2"
 markwon-ext-latex = "io.noties.markwon:ext-latex:4.6.2"

@@ -91,6 +91,7 @@ dependencies {
     implementation(libs.coil)
     implementation(libs.jsoup)
     implementation(libs.mlkit.genai.summarization)
+    implementation(libs.mlkit.translate)
 
     implementation(libs.markwon.core)
     implementation(libs.markwon.ext.latex)

@@ -669,6 +669,23 @@
         </RelativeLayout>
 
         <RelativeLayout
+            android:id="@+id/comments_header_button_translate_parent"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1">
+
+            <ImageButton
+                android:background="?selectableItemBackgroundBorderless"
+                android:layout_centerHorizontal="true"
+                android:id="@+id/comments_header_button_translate"
+                android:contentDescription="Translate"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/ic_translate" />
+
+        </RelativeLayout>
+
+        <RelativeLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1">

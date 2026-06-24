@@ -70,6 +70,7 @@ import com.simon.harmonichackernews.databinding.StoriesHeaderBinding;
 import com.simon.harmonichackernews.network.BackgroundJSONParser;
 import com.simon.harmonichackernews.network.JSONParser;
 import com.simon.harmonichackernews.network.NetworkComponent;
+import com.simon.harmonichackernews.network.TranslationManager;
 import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.utils.AccountUtils;
 import com.simon.harmonichackernews.utils.FontUtils;
@@ -2230,6 +2231,37 @@ public class StoriesFragment extends Fragment {
                         return true;
                     }
                 });
+
+                if (SettingsUtils.isTranslationEnabled(ctx)) {
+                    popupMenu.getMenu().add("Translate title").setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+                        @Override
+                        public boolean onMenuItemClick(@NonNull MenuItem item) {
+                            String title = story.title;
+                            if (title == null || title.trim().isEmpty()) {
+                                Toast.makeText(ctx, "No title to translate", Toast.LENGTH_SHORT).show();
+                                return true;
+                            }
+                            String targetLang = SettingsUtils.getTranslateTargetLanguage(ctx);
+                            Toast.makeText(ctx, "Translating...", Toast.LENGTH_SHORT).show();
+                            TranslationManager.translate(title, "auto", targetLang, new TranslationManager.TranslationCallback() {
+                                @Override
+                                public void onSuccess(String translatedText) {
+                                    new android.app.AlertDialog.Builder(ctx)
+                                            .setTitle("Translation")
+                                            .setMessage(translatedText)
+                                            .setPositiveButton("OK", null)
+                                            .show();
+                                }
+
+                                @Override
+                                public void onFailure(String error) {
+                                    Toast.makeText(ctx, error, Toast.LENGTH_LONG).show();
+                                }
+                            });
+                            return true;
+                        }
+                    });
+                }
 
                 popupMenu.getMenu().add(oldClicked ? "Mark as unread" : "Mark as read").setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
                     @Override

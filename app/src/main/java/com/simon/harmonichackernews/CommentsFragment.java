@@ -72,6 +72,7 @@ import com.android.volley.toolbox.StringRequest;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.google.android.material.loadingindicator.LoadingIndicator;
@@ -93,6 +94,7 @@ import com.simon.harmonichackernews.network.ArchiveOrgUrlGetter;
 import com.simon.harmonichackernews.network.JSONParser;
 import com.simon.harmonichackernews.network.NetworkComponent;
 import com.simon.harmonichackernews.network.SummaryManager;
+import com.simon.harmonichackernews.network.TranslationManager;
 import com.simon.harmonichackernews.network.UserActions;
 import com.simon.harmonichackernews.utils.AccountUtils;
 import com.simon.harmonichackernews.utils.CommentSorter;
@@ -170,6 +172,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private final static int COMMENT_ACTION_UNVOTE = 7;
     private final static int COMMENT_ACTION_DOWNVOTE = 8;
     private final static int COMMENT_ACTION_REPLY = 9;
+    private final static int COMMENT_ACTION_TRANSLATE = 10;
     private final static int NO_COMMENT_ACTION_COMMENT_ID = -1;
     private final static int NO_COMMENT_ACTION_VOTE_LOADING = -1;
     private final static int COMMENT_ACTION_TEXT_MAX_HEIGHT_DP = 300;
@@ -199,6 +202,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private BottomSheetFragmentCallback callback;
     private List<Comment> comments;
     private List<Comment> allComments;
+    private final Map<Integer, String> commentTranslations = new HashMap<>();
     private RequestQueue queue;
     private final Object requestTag = new Object();
     private CommentsRecyclerViewAdapter adapter;
@@ -1113,6 +1117,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
                     case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_RESET_OP_FILTER:
                         resetCommentsByOpFilter();
+                        break;
+
+                    case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_TRANSLATE_STORY:
+                        clickTranslateStory();
                         break;
                 }
             }
@@ -2261,10 +2269,81 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             adapter.updateBoundHeaderStoryViews();
         }
         updateNavigationVisibility();
+
+        if (SettingsUtils.isAutoTranslate(getContext())) {
+            autoTranslateComments();
+        }
+    }
+
+    private void autoTranslateComments() {
+        Context ctx = getContext();
+        if (ctx == null || comments.isEmpty()) return;
+
+        String targetLang = SettingsUtils.getTranslateTargetLanguage(ctx);
+
+        for (Comment comment : comments) {
+            if (comment == null || comment.text == null || comment.text.trim().isEmpty()) continue;
+            if (commentTranslations.containsKey(comment.id)) continue;
+
+            String plainText = Html.fromHtml(comment.text).toString().trim();
+            if (plainText.isEmpty()) continue;
+
+            TranslationManager.translate(plainText, "auto", targetLang, new TranslationManager.TranslationCallback() {
+                @Override
+                public void onSuccess(String translatedText) {
+                    commentTranslations.put(comment.id, translatedText);
+                    if (adapter != null) {
+                        adapter.setCommentTranslations(new HashMap<>(commentTranslations));
+                    }
+                }
+
+                @Override
+                public void onFailure(String error) {
+                    // silently ignore individual failures in auto mode
+                }
+            });
+        }
     }
 
     public void clickBrowser() {
         webViewController.openCurrentOrStoryUrlInBrowser();
+    }
+
+    public void clickTranslateStory() {
+        Context ctx = getContext();
+        if (ctx == null || adapter == null || adapter.story == null) return;
+
+        String text = adapter.story.text;
+        if (text == null || text.trim().isEmpty()) {
+            Toast.makeText(ctx, "No text to translate", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String plainText = Html.fromHtml(text).toString().trim();
+        if (plainText.isEmpty()) {
+            Toast.makeText(ctx, "No text to translate", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String targetLang = SettingsUtils.getTranslateTargetLanguage(ctx);
+        Toast.makeText(ctx, "Translating...", Toast.LENGTH_SHORT).show();
+        TranslationManager.translate(plainText, "auto", targetLang, new TranslationManager.TranslationCallback() {
+            @Override
+            public void onSuccess(String translatedText) {
+                if (!isAdded()) return;
+                new MaterialAlertDialogBuilder(requireContext())
+                        .setTitle("Translation")
+                        .setMessage(translatedText)
+                        .setPositiveButton("OK", null)
+                        .show();
+            }
+
+            @Override
+            public void onFailure(String error) {
+                if (!isAdded()) return;
+                Toast.makeText(ctx, error, Toast.LENGTH_LONG).show();
+            }
+        });
     }
 
     public void clickShare(View view) {
@@ -2915,6 +2994,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         iconActions.add(new CommentActionItem(COMMENT_ACTION_COPY, "Copy text", R.drawable.ic_content_copy));
         iconActions.add(new CommentActionItem(COMMENT_ACTION_SHARE, "Share link", R.drawable.ic_share));
+        if (SettingsUtils.isTranslationEnabled(ctx)) {
+            iconActions.add(new CommentActionItem(COMMENT_ACTION_TRANSLATE, "Translate", R.drawable.ic_translate));
+        }
         addCommentActionIconRow(actionsContainer, iconActions, comment, oldBookmarked, oldFavorited);
 
         if (hasAccount && !Utils.timeInSecondsMoreThanTwoWeeksAgo(comment.time)) {
@@ -3219,7 +3301,43 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 replyIntent.putExtra(ComposeActivity.EXTRA_TYPE, ComposeActivity.TYPE_COMMENT_REPLY);
                 ctx.startActivity(replyIntent);
                 break;
+
+            case COMMENT_ACTION_TRANSLATE:
+                translateCommentText(comment);
+                break;
         }
+    }
+
+    private void translateCommentText(Comment comment) {
+        Context ctx = getContext();
+        if (ctx == null) return;
+
+        String plainText = Html.fromHtml(comment.text != null ? comment.text : "").toString().trim();
+        if (plainText.isEmpty()) {
+            Toast.makeText(ctx, "No text to translate", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String targetLang = SettingsUtils.getTranslateTargetLanguage(ctx);
+
+        Toast.makeText(ctx, "Translating...", Toast.LENGTH_SHORT).show();
+        TranslationManager.translate(plainText, "auto", targetLang, new TranslationManager.TranslationCallback() {
+            @Override
+            public void onSuccess(String translatedText) {
+                if (!isAdded()) return;
+                new MaterialAlertDialogBuilder(requireContext())
+                        .setTitle("Translation")
+                        .setMessage(translatedText)
+                        .setPositiveButton("OK", null)
+                        .show();
+            }
+
+            @Override
+            public void onFailure(String error) {
+                if (!isAdded()) return;
+                Toast.makeText(ctx, error, Toast.LENGTH_LONG).show();
+            }
+        });
     }
 
     private void performCommentActionVote(int action, Comment comment, @Nullable View actionView) {

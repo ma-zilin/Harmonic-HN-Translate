@@ -71,6 +71,15 @@ public class CommentsPreferenceFragment extends BaseSettingsFragment implements 
             return true;
         });
 
+        Preference targetLanguagePreference = findPreference(SettingsUtils.PREF_TRANSLATE_TARGET_LANGUAGE);
+        if (targetLanguagePreference != null) {
+            updateTranslateTargetLanguageSummary(targetLanguagePreference);
+            targetLanguagePreference.setOnPreferenceClickListener(preference -> {
+                TranslationLanguageDialogFragment.show(getParentFragmentManager());
+                return true;
+            });
+        }
+
         updateHeaderDisplayPreferenceStatus();
     }
 
@@ -96,6 +105,11 @@ public class CommentsPreferenceFragment extends BaseSettingsFragment implements 
         } else if (SettingsUtils.PREF_TINT_CARD_USING_PREVIEW.equals(key)
                 || SettingsUtils.PREF_STORY_PREVIEW_IMAGE_MODE.equals(key)) {
             updateHeaderDisplayPreferenceStatus();
+        } else if (SettingsUtils.PREF_TRANSLATE_TARGET_LANGUAGE.equals(key)) {
+            Preference pref = findPreference(key);
+            if (pref != null) {
+                updateTranslateTargetLanguageSummary(pref);
+            }
         }
     }
 
@@ -106,6 +120,13 @@ public class CommentsPreferenceFragment extends BaseSettingsFragment implements 
 
         threadDepthIndicatorsPreference.setSummary(CommentDepthIndicatorUtils.getModeLabel(
                 SettingsUtils.getPreferredCommentDepthIndicatorMode(requireContext())));
+    }
+
+    private void updateTranslateTargetLanguageSummary(Preference preference) {
+        if (getContext() == null) return;
+        String langCode = SettingsUtils.getTranslateTargetLanguage(requireContext());
+        String langName = new java.util.Locale(langCode).getDisplayName(java.util.Locale.getDefault());
+        preference.setSummary(langName);
     }
 
     private void updateHeaderDisplayPreferenceStatus() {

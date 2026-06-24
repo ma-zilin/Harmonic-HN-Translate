@@ -158,4 +158,35 @@
 
     </PreferenceCategory>
 
+    <PreferenceCategory
+        app:title="Translation"
+        android:layout="@layout/preference_category">
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_translate_enabled"
+            app:defaultValue="false"
+            app:icon="@drawable/ic_translate"
+            app:title="Enable translation"
+            app:summary="Translate comments and stories using on-device ML Kit" />
+
+        <SwitchPreferenceCompat
+            app:singleLineTitle="false"
+            app:key="pref_translate_auto_mode"
+            app:defaultValue="false"
+            app:dependency="pref_translate_enabled"
+            app:icon="@drawable/ic_auto_awesome"
+            app:title="Auto-translate"
+            app:summary="Automatically translate content instead of showing a button" />
+
+        <Preference
+            app:singleLineTitle="false"
+            app:key="pref_translate_target_language"
+            app:dependency="pref_translate_enabled"
+            app:icon="@drawable/ic_translate"
+            app:title="Target language"
+            app:summary="Language to translate into" />
+
+    </PreferenceCategory>
+
 </PreferenceScreen>

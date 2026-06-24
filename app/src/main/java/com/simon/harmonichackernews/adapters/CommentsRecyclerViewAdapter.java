@@ -104,6 +104,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private final Map<Integer, Comment> commentsById = new HashMap<>();
     private final Map<Integer, Boolean> commentVisibilityById = new HashMap<>();
     private final Map<Integer, String> hackerNewsReferenceTitlesByItemId = new HashMap<>();
+    private Map<Integer, String> commentTranslations = new HashMap<>();
     private final Set<Integer> requestedHackerNewsReferenceTitleItemIds = new HashSet<>();
     private int commentLookupSize = -1;
     private Map<String, String> userTagsByUser = new HashMap<>();
@@ -189,6 +190,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public final static int FLAG_ACTION_CLICK_BROWSER = -4;
     public final static int FLAG_ACTION_CLICK_INVERT = -5;
     public final static int FLAG_ACTION_CLICK_RESET_OP_FILTER = -6;
+    public final static int FLAG_ACTION_CLICK_TRANSLATE_STORY = -8;
     public final static int FLAG_ACTION_CLICK_READER = -7;
 
     public CommentsRecyclerViewAdapter(boolean useIntegratedWebview,
@@ -1640,6 +1642,13 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         }
 
         itemViewHolder.referenceLinksVisible = bindReferenceLinks(itemViewHolder.referenceLinksContainer, referenceLinks);
+
+        String translation = commentTranslations.get(comment.id);
+        if (translation != null && !translation.isEmpty()) {
+            Spanned original = (Spanned) itemViewHolder.commentBody.getText();
+            String combined = original + "\n\n—— Translation ——\n" + translation;
+            itemViewHolder.commentBody.setText(combined);
+        }
     }
 
     private void bindInterleavedCommentContent(
@@ -2505,6 +2514,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final ImageButton shareButton;
         public final ImageButton summarizeButton;
         public final RelativeLayout summarizeButtonParent;
+        public final ImageButton translateButton;
+        public final RelativeLayout translateButtonParent;
         public final LinearLayout summaryContainer;
         public final LinearLayout summaryContentContainer;
         public final TextView summary;
@@ -2636,6 +2647,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             shareButton = binding.commentsHeaderButtonShare;
             summarizeButtonParent = binding.commentsHeaderButtonSummarizeParent;
             summarizeButton = binding.commentsHeaderButtonSummarize;
+            translateButtonParent = binding.commentsHeaderButtonTranslateParent;
+            translateButton = binding.commentsHeaderButtonTranslate;
             summaryContainer = binding.commentsHeaderSummaryContainer;
             summaryContentContainer = binding.commentsHeaderSummaryContentContainer;
             summary = binding.commentsHeaderSummary;
@@ -2742,6 +2755,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             favoriteButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_FAVORITE, v));
             shareButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_SHARE, v));
             moreButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_MORE, v));
+            translateButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_TRANSLATE_STORY, v));
             sheetRefreshButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_REFRESH, view));
             sheetExpandButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_EXPAND, view));
             sheetBrowserButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_BROWSER, view));
@@ -2978,6 +2992,11 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             commentsByOpFilterActive = active;
             notifyItemChanged(0);
         }
+    }
+
+    public void setCommentTranslations(Map<Integer, String> translations) {
+        this.commentTranslations = translations != null ? translations : new HashMap<>();
+        notifyDataSetChanged();
     }
 
     public interface RetryListener {
