@@ -47,6 +47,11 @@ This repository is a fork of the original [Harmonic-HN](https://github.com/Simon
 - **Loading indicators**: Progress spinners on story list and body text translate buttons
 - **Background preload**: Model download starts when a non-English target language is selected
 
+## Roadmap
+
+- Graceful, fast auto-translation
+- External translation API support (translation engines / LLMs)
+
 ## Contributing
 
 If you would like to see a change in Harmonic, feel free to open an issue or create a PR. Historically, most PRs are merged and I might make some design changes to make sure Harmonic stays consistent. Try to stay within the general code style of the codebase but I make no claim that the current state is holy by any means. Harmonic is meant to be beautiful from the front more so than the back and user experience is king. With that said, PRs which clean up the code or improve structure are very welcome as well. When a PR adds a new user-facing feature, I will add that feature to the changelog after merging. If you do NOT want your name there, let me know by e.g., writing so in the PR.
