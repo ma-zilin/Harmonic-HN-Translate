@@ -58,7 +58,4 @@ Using your favorite LLM workflow to create PRs is completely fine - anything tha
 ### Code
 
 Harmonic is written in Java mainly with views, old-school Android style. With MDC-Android (Views) being end of life, there will be a need to migrate to Kotlin Compose at some point in the future. While you are welcome to contribute to that, don't be afraid of using views as long as the rest of the app does.
-  
-<a href="https://play.google.com/store/apps/details?id=com.simon.harmonichackernews">
-<img src="https://play.google.com/intl/en_us/badges/images/generic/en_badge_web_generic.png" alt="Get it on Google Play" height="80">
-</a>
+
