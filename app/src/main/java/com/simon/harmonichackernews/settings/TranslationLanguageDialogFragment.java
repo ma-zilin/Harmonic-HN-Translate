@@ -8,7 +8,9 @@ import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -20,6 +22,7 @@ import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.radiobutton.MaterialRadioButton;
 import com.simon.harmonichackernews.R;
+import com.simon.harmonichackernews.network.TranslationManager;
 import com.simon.harmonichackernews.utils.SettingsUtils;
 import com.simon.harmonichackernews.utils.Utils;
 
@@ -100,6 +103,7 @@ public class TranslationLanguageDialogFragment extends AppCompatDialogFragment {
         selectedLanguage = SettingsUtils.getTranslateTargetLanguage(ctx);
 
         int textColor = MaterialColors.getColor(ctx, R.attr.storyColorNormal, "TranslateLanguageDialog");
+
         LinearLayout container = new LinearLayout(ctx);
         container.setOrientation(LinearLayout.VERTICAL);
 
@@ -109,8 +113,11 @@ public class TranslationLanguageDialogFragment extends AppCompatDialogFragment {
             container.addView(createLanguageRow(ctx, code, name, textColor));
         }
 
+        ScrollView scrollView = new ScrollView(ctx);
+        scrollView.addView(container);
+
         builder.setTitle("Target language");
-        builder.setView(container);
+        builder.setView(scrollView);
         builder.setNegativeButton("Cancel", null);
 
         updateSelection();
@@ -168,6 +175,16 @@ public class TranslationLanguageDialogFragment extends AppCompatDialogFragment {
     private void saveSelection() {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
         prefs.edit().putString(SettingsUtils.PREF_TRANSLATE_TARGET_LANGUAGE, selectedLanguage).apply();
+
+        if (!"en".equals(selectedLanguage)) {
+            TranslationManager.preloadModel("en", selectedLanguage);
+            if (!prefs.getBoolean("pref_translate_model_reminder_shown", false)) {
+                prefs.edit().putBoolean("pref_translate_model_reminder_shown", true).apply();
+                Toast.makeText(getContext(),
+                        "Translation model (~30–50 MB) will download in background",
+                        Toast.LENGTH_LONG).show();
+            }
+        }
     }
 
     private void updateSelection() {
@@ -175,4 +192,5 @@ public class TranslationLanguageDialogFragment extends AppCompatDialogFragment {
             entry.getValue().setChecked(entry.getKey().equals(selectedLanguage));
         }
     }
+
 }

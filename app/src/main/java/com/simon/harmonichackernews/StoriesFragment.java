@@ -23,6 +23,7 @@ import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ProgressBar;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
@@ -147,6 +148,9 @@ public class StoriesFragment extends Fragment {
     private Chip searchOnlyClickedChip;
     private ImageButton searchButton;
     private ImageButton closeSearchButton;
+    private ImageButton translateButton;
+    private View translateContainer;
+    private ProgressBar translateProgress;
     private ImageButton moreButton;
     private TextView lastUpdatedHeaderText;
     private TextView cacheProgressStatusText;
@@ -171,6 +175,11 @@ public class StoriesFragment extends Fragment {
     private StoryRecyclerViewAdapter mainAdapter;
     private StoryRecyclerViewAdapter searchAdapter;
     private StoryRecyclerViewAdapter adapter;
+    private final Map<Integer, String> storyTranslations = new HashMap<>();
+    private boolean translateActive = false;
+    private boolean translateMoreRunning = false;
+    private long lastTranslateMoreTime = 0;
+    private static final int TRANSLATE_BATCH_SIZE = 100;
     private StoryTypeSpinnerAdapter typeSpinnerAdapter;
     private final ArrayList<Story> mainStories = new ArrayList<>();
     private final ArrayList<Story> searchStories = new ArrayList<>();
@@ -335,6 +344,9 @@ public class StoriesFragment extends Fragment {
         searchEditText.bringToFront();
         searchButton = headerBinding.storiesHeaderSearchButton;
         closeSearchButton = headerBinding.storiesHeaderCloseSearchButton;
+        translateButton = headerBinding.storiesHeaderTranslate;
+        translateContainer = headerBinding.storiesHeaderTranslateContainer;
+        translateProgress = headerBinding.storiesHeaderTranslateProgress;
         moreButton = headerBinding.storiesHeaderMore;
         lastUpdatedHeaderText = headerBinding.storiesHeaderLastUpdated;
         cacheProgressStatusText = headerBinding.storiesHeaderCacheStatus;
@@ -608,6 +620,11 @@ public class StoriesFragment extends Fragment {
                     loadStoriesThroughIndex(targetIndex, storyListGeneration);
                     retryUnsettledStoriesThroughIndex(targetIndex, storyListGeneration);
                 }
+
+                // Auto-translate more titles as user scrolls
+                if (!searching && translateActive) {
+                    checkTranslateMore();
+                }
             }
         };
     }
@@ -775,6 +792,7 @@ public class StoriesFragment extends Fragment {
 
         searchButton.setOnClickListener(view -> openSearch());
         closeSearchButton.setOnClickListener(view -> closeSearch(view));
+        translateButton.setOnClickListener(view -> translateAllStoryTitles());
 
         // Set up spinner
         userItemListsDropdownVisible = shouldShowUserItemLists(ctx);
@@ -855,6 +873,8 @@ public class StoriesFragment extends Fragment {
         moreButton.setVisibility(searching ? View.GONE : View.VISIBLE);
         spinnerContainer.setVisibility(searching ? View.GONE : View.VISIBLE);
         searchButton.setVisibility(searching ? View.GONE : View.VISIBLE);
+        translateContainer.setVisibility(
+                (!searching && SettingsUtils.isTranslationEnabled(ctx)) ? View.VISIBLE : View.GONE);
         closeSearchButton.setVisibility(searching ? View.VISIBLE : View.GONE);
 
         searchContainer.setVisibility(searching ? View.VISIBLE : View.GONE);
@@ -1307,6 +1327,121 @@ public class StoriesFragment extends Fragment {
                 : HEADER_LAYOUT_ANIMATION_DURATION_MS);
         transition.setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f));
         TransitionManager.beginDelayedTransition(transitionRoot, transition);
+    }
+
+    private void translateAllStoryTitles() {
+        Context ctx = getContext();
+        if (ctx == null || adapter == null) return;
+
+        if (!SettingsUtils.isTranslationEnabled(ctx)) return;
+
+        // Toggle: if already active, remove translations
+        if (translateActive) {
+            storyTranslations.clear();
+            translateActive = false;
+            adapter.setStoryTranslations(null);
+            setTranslateLoading(false);
+            Toast.makeText(ctx, "Translations removed", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        performTranslateAllStoryTitles(ctx);
+    }
+
+    private void setTranslateLoading(boolean loading) {
+        if (translateButton != null && translateProgress != null) {
+            translateButton.setVisibility(loading ? View.GONE : View.VISIBLE);
+            translateProgress.setVisibility(loading ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    private void performTranslateAllStoryTitles(Context ctx) {
+        List<Story> allStories = adapter.getStories();
+        if (allStories.isEmpty()) return;
+
+        storyTranslations.clear();
+        translateActive = true;
+        setTranslateLoading(true);
+        String targetLang = SettingsUtils.getTranslateTargetLanguage(ctx);
+
+        // Translate first batch of loaded stories
+        int count = 0;
+        final java.util.concurrent.atomic.AtomicInteger pending = new java.util.concurrent.atomic.AtomicInteger();
+        for (Story story : allStories) {
+            if (count >= TRANSLATE_BATCH_SIZE) break;
+            if (!story.loaded || story.loadingFailed) continue;
+            if (skipTitle(story)) continue;
+            if (storyTranslations.containsKey(story.id)) continue;
+
+            int storyId = story.id;
+            pending.incrementAndGet();
+            count++;
+            TranslationManager.translate(story.title.trim(), "en", targetLang,
+                    new TranslationManager.TranslationCallback() {
+                        @Override
+                        public void onSuccess(String translatedText) {
+                            storyTranslations.put(storyId, translatedText);
+                            onItemDone();
+                        }
+                        @Override
+                        public void onFailure(String error) { onItemDone(); }
+                        private void onItemDone() {
+                            if (pending.decrementAndGet() == 0) {
+                                adapter.setStoryTranslations(new HashMap<>(storyTranslations));
+                                setTranslateLoading(false);
+                            }
+                        }
+                    });
+        }
+        if (pending.get() == 0) {
+            adapter.setStoryTranslations(new HashMap<>(storyTranslations));
+            translateActive = false;
+            setTranslateLoading(false);
+        }
+        Toast.makeText(ctx, "Translating " + pending.get() + " titles...", Toast.LENGTH_SHORT).show();
+    }
+
+    private boolean skipTitle(Story story) {
+        String t = story.title;
+        return t == null || t.trim().isEmpty() || "Loading...".equals(t);
+    }
+
+    private void checkTranslateMore() {
+        if (translateMoreRunning || !translateActive || adapter == null || mainRecyclerView == null) return;
+        long now = System.currentTimeMillis();
+        if (now - lastTranslateMoreTime < 500) return; // debounce 500ms
+        lastTranslateMoreTime = now;
+        translateMoreRunning = true;
+
+        List<Story> allStories = adapter.getStories();
+        int lastVisible = linearLayoutManager.findLastVisibleItemPosition();
+        if (lastVisible < 0 || lastVisible >= allStories.size()) return;
+
+        String targetLang = SettingsUtils.getTranslateTargetLanguage(getContext());
+        if (targetLang == null) return;
+
+        int count = 0;
+        for (int i = 0; i <= lastVisible + 20 && i < allStories.size(); i++) {
+            Story story = allStories.get(i);
+            if (!story.loaded || story.loadingFailed) continue;
+            if (skipTitle(story)) continue;
+            if (storyTranslations.containsKey(story.id)) continue;
+            if (count >= 10) break;
+
+            int storyId = story.id;
+            count++;
+            TranslationManager.translate(story.title.trim(), "en", targetLang,
+                    new TranslationManager.TranslationCallback() {
+                        @Override
+                        public void onSuccess(String translatedText) {
+                            storyTranslations.put(storyId, translatedText);
+                            adapter.setStoryTranslations(new HashMap<>(storyTranslations));
+                        }
+                        @Override
+                        public void onFailure(String error) { }
+                    });
+        }
+        translateMoreRunning = false;
     }
 
     private void openSearch() {
@@ -2112,6 +2247,8 @@ public class StoriesFragment extends Fragment {
     private void copyStoryAdapterDisplaySettings(@NonNull StoryRecyclerViewAdapter sourceAdapter,
                                                  @NonNull StoryRecyclerViewAdapter targetAdapter) {
         StoryDisplaySettings.copyAdapterSettings(sourceAdapter, targetAdapter);
+        targetAdapter.setTranslateDisplayMode(
+                SettingsUtils.DISPLAY_MODE_OVERLAY.equals(SettingsUtils.getTranslateDisplayMode(requireContext())));
     }
 
     private StoryRecyclerViewAdapter createStoryAdapter(List<Story> adapterStories) {
@@ -2121,6 +2258,8 @@ public class StoriesFragment extends Fragment {
     private void configureStoryAdapter(@NonNull StoryRecyclerViewAdapter configuredAdapter) {
         updateAdapterPaginationMode(configuredAdapter);
         configuredAdapter.visibleStoryCount = configuredAdapter.paginationMode ? StoryRecyclerViewAdapter.PAGINATION_PAGE_SIZE : Integer.MAX_VALUE;
+        configuredAdapter.setTranslateDisplayMode(
+                SettingsUtils.DISPLAY_MODE_OVERLAY.equals(SettingsUtils.getTranslateDisplayMode(requireContext())));
 
         configuredAdapter.setOnLinkClickListener(position -> {
             useStoryListForAdapter(configuredAdapter);
@@ -2233,34 +2372,7 @@ public class StoriesFragment extends Fragment {
                 });
 
                 if (SettingsUtils.isTranslationEnabled(ctx)) {
-                    popupMenu.getMenu().add("Translate title").setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
-                        @Override
-                        public boolean onMenuItemClick(@NonNull MenuItem item) {
-                            String title = story.title;
-                            if (title == null || title.trim().isEmpty()) {
-                                Toast.makeText(ctx, "No title to translate", Toast.LENGTH_SHORT).show();
-                                return true;
-                            }
-                            String targetLang = SettingsUtils.getTranslateTargetLanguage(ctx);
-                            Toast.makeText(ctx, "Translating...", Toast.LENGTH_SHORT).show();
-                            TranslationManager.translate(title, "auto", targetLang, new TranslationManager.TranslationCallback() {
-                                @Override
-                                public void onSuccess(String translatedText) {
-                                    new android.app.AlertDialog.Builder(ctx)
-                                            .setTitle("Translation")
-                                            .setMessage(translatedText)
-                                            .setPositiveButton("OK", null)
-                                            .show();
-                                }
-
-                                @Override
-                                public void onFailure(String error) {
-                                    Toast.makeText(ctx, error, Toast.LENGTH_LONG).show();
-                                }
-                            });
-                            return true;
-                        }
-                    });
+                    // Translation now uses the toolbar button (translateAllStoryTitles)
                 }
 
                 popupMenu.getMenu().add(oldClicked ? "Mark as unread" : "Mark as read").setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
@@ -2388,6 +2500,12 @@ public class StoriesFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
+
+        // Refresh header buttons after settings changes
+        if (translateContainer != null) {
+            translateContainer.setVisibility(
+                    (!searching && SettingsUtils.isTranslationEnabled(getContext())) ? View.VISIBLE : View.GONE);
+        }
 
         filterWords = Utils.getFilterWords(getContext());
         filterDomains = Utils.getFilterDomains(getContext());

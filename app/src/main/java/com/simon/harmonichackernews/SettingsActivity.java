@@ -27,6 +27,7 @@ import com.simon.harmonichackernews.settings.SettingsCallback;
 import com.simon.harmonichackernews.settings.SettingsFragmentFactory;
 import com.simon.harmonichackernews.settings.SettingsHeaderFragment;
 import com.simon.harmonichackernews.settings.StoriesPreferenceFragment;
+import com.simon.harmonichackernews.settings.TranslationPreferenceFragment;
 import com.simon.harmonichackernews.settings.WebLinksPreferenceFragment;
 import com.simon.harmonichackernews.utils.FoldableSplitInitializer;
 import com.simon.harmonichackernews.utils.ThemeUtils;
@@ -59,6 +60,7 @@ public class SettingsActivity extends AppCompatActivity implements
         FRAGMENT_TO_KEY.put(FiltersTagsPreferenceFragment.class.getName(), "pref_header_filters_tags");
         FRAGMENT_TO_KEY.put(DataStoragePreferenceFragment.class.getName(), "pref_header_data_storage");
         FRAGMENT_TO_KEY.put(AiSummaryPreferenceFragment.class.getName(), "pref_header_ai_summary");
+        FRAGMENT_TO_KEY.put(TranslationPreferenceFragment.class.getName(), "pref_header_translation");
         FRAGMENT_TO_KEY.put(DebugFragment.class.getName(), SettingsHeaderFragment.DEBUG_KEY);
         FRAGMENT_TO_KEY.put(AboutFragment.class.getName(), SettingsHeaderFragment.ABOUT_KEY);
     }

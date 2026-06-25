@@ -29,6 +29,7 @@ import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
@@ -105,6 +106,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private final Map<Integer, Boolean> commentVisibilityById = new HashMap<>();
     private final Map<Integer, String> hackerNewsReferenceTitlesByItemId = new HashMap<>();
     private Map<Integer, String> commentTranslations = new HashMap<>();
+    private boolean translateOverlay = false;
     private final Set<Integer> requestedHackerNewsReferenceTitleItemIds = new HashSet<>();
     private int commentLookupSize = -1;
     private Map<String, String> userTagsByUser = new HashMap<>();
@@ -133,6 +135,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public boolean hasAccountDetails;
     private boolean readerModeAvailable = false;
     private boolean readerModeEnabled = false;
+    private boolean translateBodyButtonVisible = false;
+    private boolean translateBodyLoading = false;
     private boolean commentsByOpFilterActive = false;
     public String username;
     public float preferredTextSize;
@@ -192,6 +196,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public final static int FLAG_ACTION_CLICK_RESET_OP_FILTER = -6;
     public final static int FLAG_ACTION_CLICK_TRANSLATE_STORY = -8;
     public final static int FLAG_ACTION_CLICK_READER = -7;
+    public final static int FLAG_ACTION_CLICK_TRANSLATE_BODY = -9;
 
     public CommentsRecyclerViewAdapter(boolean useIntegratedWebview,
                                        LinearLayout sheet,
@@ -603,9 +608,52 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         }
     }
 
+    public void setTranslateBodyButtonState(boolean visible, boolean loading) {
+        if (translateBodyButtonVisible == visible
+                && translateBodyLoading == loading) {
+            return;
+        }
+        translateBodyButtonVisible = visible;
+        translateBodyLoading = loading;
+        if (boundHeaderViewHolder != null
+                && ViewCompat.isAttachedToWindow(boundHeaderViewHolder.sheetTranslateBodyContainer)) {
+            applyTranslateBodyButtonState(boundHeaderViewHolder);
+        }
+    }
+
+    public void setTranslateLoading(boolean loading) {
+        if (boundHeaderViewHolder == null) return;
+        boundHeaderViewHolder.translateButton.setVisibility(loading ? View.GONE : View.VISIBLE);
+        boundHeaderViewHolder.translateProgress.setVisibility(loading ? View.VISIBLE : View.GONE);
+    }
+
+    private void applyTranslateBodyButtonState(HeaderViewHolder holder) {
+        View container = holder.sheetTranslateBodyContainer;
+
+        if (translateBodyButtonVisible) {
+            container.setVisibility(View.VISIBLE);
+            container.setAlpha(1f);
+            holder.sheetTranslateBodyButton.setEnabled(true);
+            holder.sheetTranslateBodyButton.setClickable(true);
+
+            if (translateBodyLoading) {
+                holder.sheetTranslateBodyIcon.setVisibility(View.GONE);
+                holder.sheetTranslateBodyProgress.setVisibility(View.VISIBLE);
+            } else {
+                holder.sheetTranslateBodyIcon.setVisibility(View.VISIBLE);
+                holder.sheetTranslateBodyProgress.setVisibility(View.GONE);
+                int tintColor = MaterialColors.getColor(holder.sheetTranslateBodyIcon, R.attr.drawableColor);
+                ViewCompat.setBackgroundTintList(holder.sheetTranslateBodyIcon, ColorStateList.valueOf(tintColor));
+            }
+        } else {
+            container.setVisibility(View.GONE);
+        }
+    }
+
     private void bindReaderModeButton(HeaderViewHolder headerViewHolder) {
         setReaderModeButtonVisible(headerViewHolder, readerModeAvailable, false);
         bindReaderModeButtonState(headerViewHolder);
+        applyTranslateBodyButtonState(headerViewHolder);
     }
 
     private void bindReaderModeButtonState(HeaderViewHolder headerViewHolder) {
@@ -1645,9 +1693,21 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
         String translation = commentTranslations.get(comment.id);
         if (translation != null && !translation.isEmpty()) {
-            Spanned original = (Spanned) itemViewHolder.commentBody.getText();
-            String combined = original + "\n\n—— Translation ——\n" + translation;
-            itemViewHolder.commentBody.setText(combined);
+            if (translateOverlay) {
+                // Replace original text with translation
+                itemViewHolder.commentBody.setHtml(translation);
+                FontUtils.setCommentTextTypeface(itemViewHolder.commentBody, preferredTextSize);
+                itemViewHolder.commentTranslationDivider.setVisibility(View.GONE);
+                itemViewHolder.commentTranslationBody.setVisibility(View.GONE);
+            } else {
+                itemViewHolder.commentTranslationDivider.setVisibility(View.VISIBLE);
+                itemViewHolder.commentTranslationBody.setVisibility(View.VISIBLE);
+                itemViewHolder.commentTranslationBody.setHtml(translation);
+                FontUtils.setCommentTextTypeface(itemViewHolder.commentTranslationBody, preferredTextSize);
+            }
+        } else {
+            itemViewHolder.commentTranslationDivider.setVisibility(View.GONE);
+            itemViewHolder.commentTranslationBody.setVisibility(View.GONE);
         }
     }
 
@@ -2374,6 +2434,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final TextView commentHiddenText;
         public final View commentIndentIndicator;
         public final View commentCard;
+        public final View commentTranslationDivider;
+        public final HtmlTextView commentTranslationBody;
         public final LinearLayout referenceLinksContainer;
         public boolean commentBodyHasText = true;
         public boolean referenceLinksVisible = false;
@@ -2389,6 +2451,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     binding.commentHiddenShort,
                     binding.commentIndentIndicator,
                     null,
+                    binding.commentTranslationDivider,
+                    binding.commentTranslationBody,
                     binding.commentReferenceLinksContainer);
         }
 
@@ -2402,6 +2466,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                     binding.commentHiddenShort,
                     binding.commentIndentIndicator,
                     binding.commentCard,
+                    binding.commentTranslationDivider,
+                    binding.commentTranslationBody,
                     binding.commentReferenceLinksContainer);
         }
 
@@ -2413,6 +2479,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                                TextView hiddenText,
                                View indentIndicator,
                                @Nullable View card,
+                               View translationDivider,
+                               HtmlTextView translationBody,
                                LinearLayout linksContainer) {
             super(view);
             commentBody = body;
@@ -2422,6 +2490,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             commentHiddenText = hiddenText;
             commentIndentIndicator = indentIndicator;
             commentCard = card;
+            commentTranslationDivider = translationDivider;
+            commentTranslationBody = translationBody;
             referenceLinksContainer = linksContainer;
 
             itemView.setOnLongClickListener(v -> {
@@ -2515,6 +2585,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final ImageButton summarizeButton;
         public final RelativeLayout summarizeButtonParent;
         public final ImageButton translateButton;
+        public final ProgressBar translateProgress;
         public final RelativeLayout translateButtonParent;
         public final LinearLayout summaryContainer;
         public final LinearLayout summaryContentContainer;
@@ -2592,6 +2663,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         public final RelativeLayout sheetReaderButton;
         public final ImageView sheetReaderIcon;
         public final RelativeLayout sheetInvertButton;
+        public final RelativeLayout sheetTranslateBodyContainer;
+        public final RelativeLayout sheetTranslateBodyButton;
+        public final ImageView sheetTranslateBodyIcon;
+        public final ProgressBar sheetTranslateBodyProgress;
         public final View sheetHandleContainer;
         public final LinearLayout sheetButtonsContainer;
         public final LinearLayout actionsContainer;
@@ -2649,6 +2724,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             summarizeButton = binding.commentsHeaderButtonSummarize;
             translateButtonParent = binding.commentsHeaderButtonTranslateParent;
             translateButton = binding.commentsHeaderButtonTranslate;
+            translateProgress = binding.commentsHeaderButtonTranslateProgress;
             summaryContainer = binding.commentsHeaderSummaryContainer;
             summaryContentContainer = binding.commentsHeaderSummaryContentContainer;
             summary = binding.commentsHeaderSummary;
@@ -2675,6 +2751,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             sheetReaderButton = binding.commentsSheetLayoutReader;
             sheetReaderIcon = binding.commentsSheetReaderIcon;
             sheetInvertButton = binding.commentsSheetLayoutInvert;
+            sheetTranslateBodyContainer = binding.commentsSheetContainerTranslateBody;
+            sheetTranslateBodyButton = binding.commentsSheetLayoutTranslateBody;
+            sheetTranslateBodyIcon = binding.commentsSheetTranslateBodyIcon;
+            sheetTranslateBodyProgress = binding.commentsSheetTranslateBodyProgress;
             sheetHandleContainer = binding.commentsSheetHandleContainer;
             sheetButtonsContainer = binding.commentSheetButtonsContainer;
             actionsContainer = binding.commentsHeaderActionsContainer;
@@ -2761,11 +2841,13 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
             sheetBrowserButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_BROWSER, view));
             sheetReaderButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_READER, view));
             sheetInvertButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_INVERT, view));
+            sheetTranslateBodyButton.setOnClickListener((v) -> headerActionClickListener.onActionClicked(FLAG_ACTION_CLICK_TRANSLATE_BODY, view));
 
             TooltipCompat.setTooltipText(sheetRefreshButton, "Refresh");
             TooltipCompat.setTooltipText(sheetExpandButton, "Open comments");
             TooltipCompat.setTooltipText(sheetBrowserButton, "Open in browser");
             TooltipCompat.setTooltipText(sheetInvertButton, "Invert colors");
+            TooltipCompat.setTooltipText(sheetTranslateBodyButton, "Translate article");
 
             TooltipCompat.setTooltipText(userButton, "User");
             TooltipCompat.setTooltipText(commentButton, "Comment");
@@ -2997,6 +3079,15 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public void setCommentTranslations(Map<Integer, String> translations) {
         this.commentTranslations = translations != null ? translations : new HashMap<>();
         notifyDataSetChanged();
+    }
+
+    public void setTranslateDisplayMode(boolean overlay) {
+        if (this.translateOverlay != overlay) {
+            this.translateOverlay = overlay;
+            if (!commentTranslations.isEmpty()) {
+                notifyDataSetChanged();
+            }
+        }
     }
 
     public interface RetryListener {

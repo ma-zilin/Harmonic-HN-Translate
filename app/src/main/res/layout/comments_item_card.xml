@@ -113,6 +113,24 @@
                     android:textSize="15sp"
                     tools:text="Yes, I've come to the same conclusion. When interviewing ML engineers, I prefer to know they are exceptional programmers with passable knowledge of ML than the other way around." />
 
+                <View
+                    android:id="@+id/comment_translation_divider"
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="10dp"
+                    android:layout_marginBottom="6dp"
+                    android:background="?android:attr/listDivider"
+                    android:visibility="gone" />
+
+                <org.sufficientlysecure.htmltextview.HtmlTextView
+                    android:id="@+id/comment_translation_body"
+                    android:fontFamily="@font/product_sans"
+                    android:textColor="?attr/storyColorNormal"
+                    android:textSize="15sp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone" />
+
                 <LinearLayout
                     android:id="@+id/comment_reference_links_container"
                     android:layout_width="match_parent"

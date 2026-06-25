@@ -44,6 +44,13 @@
         app:fragment="com.simon.harmonichackernews.settings.AiSummaryPreferenceFragment" />
 
     <Preference
+        app:key="pref_header_translation"
+        app:title="Translation"
+        app:summary="Language, display mode"
+        app:icon="@drawable/ic_translate"
+        app:fragment="com.simon.harmonichackernews.settings.TranslationPreferenceFragment" />
+
+    <Preference
         app:key="pref_header_data_storage"
         app:title="Data"
         app:summary="Bookmarks, history, other"

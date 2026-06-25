@@ -57,6 +57,7 @@ import org.sufficientlysecure.htmltextview.OnClickATagListener;
 
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 
 import coil.Coil;
@@ -69,6 +70,8 @@ import coil.util.CoilUtils;
 public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     private final List<Story> stories;
+    private Map<Integer, String> storyTranslations = new HashMap<>();
+    private boolean translateOverlay = false;
     private ClickListener linkClickListener;
     private ClickListener commentClickListener;
     private ClickListener commentRepliesClickListener;
@@ -612,7 +615,26 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
             return;
         }
 
-        storyViewHolder.titleView.setText(story.title);
+        String translation = storyTranslations.get(story.id);
+        if (translation != null && !translation.isEmpty()) {
+            storyViewHolder.titleView.setText(translateOverlay ? translation : story.title + "\n" + translation);
+        } else {
+            storyViewHolder.titleView.setText(story.title);
+        }
+    }
+
+    public void setStoryTranslations(Map<Integer, String> translations) {
+        this.storyTranslations = translations != null ? translations : new HashMap<>();
+        notifyDataSetChanged();
+    }
+
+    public void setTranslateDisplayMode(boolean overlay) {
+        if (this.translateOverlay != overlay) {
+            this.translateOverlay = overlay;
+            if (!storyTranslations.isEmpty()) {
+                notifyDataSetChanged();
+            }
+        }
     }
 
     private SpannableStringBuilder getTitleWithBadge(Context context, String title, int badgeDrawable) {
@@ -1525,7 +1547,10 @@ public class StoryRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.
         return getStoryViewType();
     }
 
-    @Override
+    public List<Story> getStories() {
+        return stories;
+    }
+
     public int getItemCount() {
         int visibleItemCount = getVisibleItemCount();
         return visibleItemCount + (hasLoadMoreButton() ? 1 : 0);

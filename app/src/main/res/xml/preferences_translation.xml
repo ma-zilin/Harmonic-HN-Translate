@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <SwitchPreferenceCompat
+        app:singleLineTitle="false"
+        app:key="pref_translate_enabled"
+        app:defaultValue="false"
+        app:icon="@drawable/ic_translate"
+        app:title="Enable translation"
+        app:summary="Story list, comments, and reader mode body text using on-device ML Kit. The translate button appears in the bottom sheet when reader mode is active." />
+
+    <SwitchPreferenceCompat
+        app:singleLineTitle="false"
+        app:key="pref_translate_auto_mode"
+        app:defaultValue="false"
+        app:dependency="pref_translate_enabled"
+        app:icon="@drawable/ic_auto_awesome"
+        app:title="Auto-translate comments"
+        app:summary="Automatically translate comments as they load" />
+
+    <Preference
+        app:singleLineTitle="false"
+        app:key="pref_translate_target_language"
+        app:dependency="pref_translate_enabled"
+        app:icon="@drawable/ic_translate"
+        app:title="Target language"
+        app:summary="Language to translate into" />
+
+    <ListPreference
+        app:singleLineTitle="false"
+        app:key="pref_translate_display_mode"
+        app:dependency="pref_translate_enabled"
+        app:defaultValue="bilingual"
+        app:icon="@drawable/ic_style"
+        app:title="Display mode"
+        app:summary="Bilingual: show original + translation. Overlay: replace original with translation. Applies to story titles, comments, and web page body text."
+        app:entries="@array/translate_display_mode_entries"
+        app:entryValues="@array/translate_display_mode_values" />
+
+</PreferenceScreen>

@@ -83,6 +83,7 @@ class CommentsWebViewController {
     private static final String OFFLINE_PAGE_URL = "file:///android_asset/webview_error.html";
     private static final String READER_MODE_READABILITY_SCRIPT_ASSET = "vendor/mozilla/readability/0.6.0/Readability.min.js";
     private static final String READER_MODE_SCRIPT_ASSET = "reader_mode.js";
+    private static final String TRANSLATE_SCRIPT_ASSET = "translate_inject.js";
     private static final long WEBVIEW_VISIBLE_LOAD_GRACE_MS = 1500;
     private static final long READER_MODE_INITIAL_AVAILABILITY_GRACE_MS = 2000;
     private static final long READER_MODE_AVAILABILITY_RECHECK_DELAY_MS = 2500;
@@ -104,6 +105,8 @@ class CommentsWebViewController {
         void onReaderModeChanged(boolean enabled);
 
         void onReaderModeAvailabilityChanged(boolean available);
+
+        void onTranslationComplete(boolean success);
     }
 
     private final CommentsFragment fragment;
@@ -165,6 +168,11 @@ class CommentsWebViewController {
     private WebChromeClient.CustomViewCallback customViewCallback;
     @Nullable
     private PdfAndroidJavascriptBridge pdfAndroidJavascriptBridge;
+    @Nullable
+    private TranslationJavascriptBridge translationJavascriptBridge;
+    @Nullable
+    private String translateScript;
+    private boolean translateActive = false;
     @Nullable
     private String currentPdfFilePath;
     private boolean retryingFailedWebViewUrl = false;
@@ -333,6 +341,72 @@ class CommentsWebViewController {
             } catch (Exception e2) {
                 Utils.toast("Couldn't open URL", fragment.getContext());
             }
+        }
+    }
+
+    void requestBodyText(BodyTextCallback callback) {
+        if (webView == null) {
+            callback.onResult("");
+            return;
+        }
+
+        webView.evaluateJavascript(
+                "(function() { return document.body ? (document.body.innerText || '') : ''; })();",
+                result -> {
+                    String text = result != null ? result.replaceAll("^\"|\"$", "") : "";
+                    text = text.replace("\\n", "\n").replace("\\\"", "\"");
+                    callback.onResult(text);
+                });
+    }
+
+    interface BodyTextCallback {
+        void onResult(String text);
+    }
+
+    void startImmersiveTranslation(String fromLang, String toLang, String mode) {
+        if (webView == null || translateActive) return;
+
+        String script = getTranslateScript(fragment.requireContext());
+        if (script == null) return;
+
+        translateActive = true;
+        String command = script +
+                "\nHarmonicTranslate.translatePage('" + fromLang + "','" + toLang + "','" + mode + "');";
+        webView.evaluateJavascript(command, null);
+
+        // Safety timeout: reset translateActive if translation never completes (e.g. empty DOM)
+        webViewHandler.postDelayed(() -> {
+            if (translateActive) {
+                webView.evaluateJavascript("window.__harmonicTranslateError", error -> {
+                    if (error != null && !"null".equals(error) && error.length() > 2) {
+                        translateActive = false;
+                    }
+                });
+            }
+        }, 15000);
+    }
+
+    void stopImmersiveTranslation() {
+        if (webView == null || !translateActive) return;
+        translateActive = false;
+        webView.evaluateJavascript("HarmonicTranslate.restorePage()", null);
+    }
+
+    boolean isImmersiveTranslationActive() {
+        return translateActive;
+    }
+
+    @Nullable
+    private String getTranslateScript(Context context) {
+        if (translateScript != null) return translateScript;
+        try {
+            StringBuilder sb = new StringBuilder();
+            appendAssetFile(context, TRANSLATE_SCRIPT_ASSET, sb);
+            translateScript = sb.toString();
+            return translateScript;
+        } catch (Exception e) {
+            android.util.Log.e("CommentsWebView", "Failed to load translate script", e);
+            return null;
         }
     }
 
@@ -881,6 +955,9 @@ class CommentsWebViewController {
         CookieManager cookieManager = CookieManager.getInstance();
         cookieManager.setAcceptCookie(true);
         cookieManager.setAcceptThirdPartyCookies(webView, true);
+
+        translationJavascriptBridge = new TranslationJavascriptBridge();
+        webView.addJavascriptInterface(translationJavascriptBridge, "HarmonicTranslation");
 
         webView.setDownloadListener(new DownloadListener() {
             @Override
@@ -1450,6 +1527,7 @@ class CommentsWebViewController {
 
     private void destroy(boolean rendererProcessGone) {
         cancelProgressAnimator();
+        translateActive = false;
         currentPdfFilePath = null;
         webViewLoadGeneration++;
         webViewLoadInProgress = false;
@@ -1842,6 +1920,57 @@ class CommentsWebViewController {
             void onFailure();
 
             void onLoad();
+        }
+    }
+
+    private class TranslationJavascriptBridge {
+
+        @android.webkit.JavascriptInterface
+        public void translateBatch(String textsJson, String fromLang, String toLang) {
+            try {
+                org.json.JSONArray jsonArray = new org.json.JSONArray(textsJson);
+                String[] texts = new String[jsonArray.length()];
+                for (int i = 0; i < jsonArray.length(); i++) {
+                    texts[i] = jsonArray.getString(i);
+                }
+
+                com.simon.harmonichackernews.network.TranslationManager.translateBatch(
+                        texts, fromLang, toLang,
+                        new com.simon.harmonichackernews.network.TranslationManager.BatchCallback() {
+                            @Override
+                            public void onComplete(String[] translations) {
+                                org.json.JSONArray resultJson = new org.json.JSONArray();
+                                for (String t : translations) {
+                                    resultJson.put(t != null ? t : "");
+                                }
+                                String json = resultJson.toString();
+                                webView.post(() -> {
+                                    webView.evaluateJavascript(
+                                            "(function(){" +
+                                            "window.__harmonicTranslateData=" + json + ";" +
+                                            "HarmonicTranslate.onTranslated();" +
+                                            "})()", null);
+                                    callbacks.onTranslationComplete(true);
+                                });
+                            }
+
+                            @Override
+                            public void onError(String error) {
+                                webView.post(() -> {
+                                    webView.evaluateJavascript(
+                                            "(function(){HarmonicTranslate.onError('" +
+                                            error.replace("\\", "\\\\").replace("'", "\\'") +
+                                            "')})()", null);
+                                    callbacks.onTranslationComplete(false);
+                                });
+                            }
+                        });
+            } catch (Exception e) {
+                android.util.Log.e("TranslationBridge", "translateBatch failed", e);
+                String msg = e.getMessage() != null ? e.getMessage().replace("\\", "\\\\").replace("'", "\\'") : "unknown";
+                webView.post(() -> webView.evaluateJavascript(
+                        "(function(){HarmonicTranslate.onError('" + msg + "')})()", null));
+            }
         }
     }
 }

@@ -54,4 +54,13 @@
         <item>loading</item>
     </string-array>
 
+    <string-array name="translate_display_mode_entries">
+        <item>Bilingual</item>
+        <item>Overlay</item>
+    </string-array>
+    <string-array name="translate_display_mode_values">
+        <item>bilingual</item>
+        <item>overlay</item>
+    </string-array>
+
 </resources>

@@ -61,6 +61,9 @@ public class SettingsUtils {
     public static final String PREF_TRANSLATE_ENABLED = "pref_translate_enabled";
     public static final String PREF_TRANSLATE_AUTO_MODE = "pref_translate_auto_mode";
     public static final String PREF_TRANSLATE_TARGET_LANGUAGE = "pref_translate_target_language";
+    public static final String PREF_TRANSLATE_DISPLAY_MODE = "pref_translate_display_mode";
+    public static final String DISPLAY_MODE_OVERLAY = "overlay";
+    public static final String DISPLAY_MODE_BILINGUAL = "bilingual";
     public static final String PREF_FAVICON_PROVIDER = "pref_favicon_provider";
     public static final String PREF_ADDITIONAL_FRONTPAGES = "pref_additional_frontpages";
     public static final String FRONT_PAGE_CLASSIC = "Classic";
@@ -963,8 +966,14 @@ public class SettingsUtils {
 
     public static String getTranslateTargetLanguage(Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        return prefs.getString(PREF_TRANSLATE_TARGET_LANGUAGE,
-                java.util.Locale.getDefault().getLanguage());
+        return prefs.getString(PREF_TRANSLATE_TARGET_LANGUAGE, "en");
+    }
+
+    public static String getTranslateDisplayMode(Context ctx) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        String mode = prefs.getString(PREF_TRANSLATE_DISPLAY_MODE, DISPLAY_MODE_BILINGUAL);
+        if (DISPLAY_MODE_OVERLAY.equals(mode)) return DISPLAY_MODE_OVERLAY;
+        return DISPLAY_MODE_BILINGUAL;
     }
 
     public static boolean getBooleanPref(String key, boolean backup, Context ctx) {

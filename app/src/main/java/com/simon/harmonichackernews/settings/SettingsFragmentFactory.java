@@ -40,6 +40,8 @@ public final class SettingsFragmentFactory {
                 return new DataStoragePreferenceFragment();
             case "com.simon.harmonichackernews.settings.AiSummaryPreferenceFragment":
                 return new AiSummaryPreferenceFragment();
+            case "com.simon.harmonichackernews.settings.TranslationPreferenceFragment":
+                return new TranslationPreferenceFragment();
             default:
                 try {
                     return fragmentManager.getFragmentFactory()

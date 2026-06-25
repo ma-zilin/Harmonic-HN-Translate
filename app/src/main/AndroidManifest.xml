@@ -3,7 +3,7 @@
   xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Gemini Nano summarization is runtime-gated to API 26+. -->
-    <uses-sdk tools:overrideLibrary="com.google.mlkit.genai.summarization,com.google.mlkit.genai.common" />
+    <uses-sdk tools:overrideLibrary="com.google.mlkit.genai.summarization,com.google.mlkit.genai.common,com.google.mlkit.nl.translate" />
 
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />

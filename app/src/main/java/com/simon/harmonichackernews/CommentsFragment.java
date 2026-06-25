@@ -172,7 +172,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private final static int COMMENT_ACTION_UNVOTE = 7;
     private final static int COMMENT_ACTION_DOWNVOTE = 8;
     private final static int COMMENT_ACTION_REPLY = 9;
-    private final static int COMMENT_ACTION_TRANSLATE = 10;
     private final static int NO_COMMENT_ACTION_COMMENT_ID = -1;
     private final static int NO_COMMENT_ACTION_VOTE_LOADING = -1;
     private final static int COMMENT_ACTION_TEXT_MAX_HEIGHT_DP = 300;
@@ -481,6 +480,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             public void onReaderModeChanged(boolean enabled) {
                 if (adapter != null) {
                     adapter.setReaderModeEnabled(enabled);
+                    boolean transEnabled = SettingsUtils.isTranslationEnabled(getContext());
+                    adapter.setTranslateBodyButtonState(
+                            transEnabled && enabled, false);
                 }
             }
 
@@ -488,6 +490,16 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             public void onReaderModeAvailabilityChanged(boolean available) {
                 if (adapter != null) {
                     adapter.setReaderModeAvailable(available);
+                }
+            }
+
+            @Override
+            public void onTranslationComplete(boolean success) {
+                if (adapter != null) {
+                    Context ctx = getContext();
+                    boolean transEnabled = ctx != null && SettingsUtils.isTranslationEnabled(ctx);
+                    adapter.setTranslateBodyButtonState(
+                            transEnabled && webViewController.isReaderModeEnabled(), false);
                 }
             }
         });
@@ -977,9 +989,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 this);
         adapter.lastRefreshed = lastLoaded;
         adapter.setCommentsByOpFilterActive(commentsByOpFilterActive);
+        adapter.setTranslateDisplayMode(
+                SettingsUtils.DISPLAY_MODE_OVERLAY.equals(SettingsUtils.getTranslateDisplayMode(getContext())));
         if (webViewController != null) {
             adapter.setReaderModeEnabled(webViewController.isReaderModeEnabled());
             adapter.setReaderModeAvailable(webViewController.isReaderModeAvailable());
+            boolean transEnabled = SettingsUtils.isTranslationEnabled(getContext());
+            adapter.setTranslateBodyButtonState(
+                    transEnabled && webViewController.isReaderModeEnabled(), false);
         }
         adapter.setHeaderBackgroundColorListener(this::updateHeaderStatusBarColor);
         adapter.loadUserTags(requireContext());
@@ -1121,6 +1138,10 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
                     case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_TRANSLATE_STORY:
                         clickTranslateStory();
+                        break;
+
+                    case CommentsRecyclerViewAdapter.FLAG_ACTION_CLICK_TRANSLATE_BODY:
+                        clickTranslateBodyText();
                         break;
                 }
             }
@@ -1418,6 +1439,14 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         }
         if (adapter != null) {
             adapter.notifyItemChanged(0);
+            // Refresh translate body button state after settings changes
+            if (webViewController != null) {
+                boolean transEnabled = SettingsUtils.isTranslationEnabled(getContext());
+                adapter.setTranslateBodyButtonState(
+                        transEnabled && webViewController.isReaderModeEnabled(), false);
+                adapter.setTranslateDisplayMode(
+                        SettingsUtils.DISPLAY_MODE_OVERLAY.equals(SettingsUtils.getTranslateDisplayMode(getContext())));
+            }
         }
         saveScreenHeight();
         refreshCommentActionOverlayForConfiguration();
@@ -2288,7 +2317,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             String plainText = Html.fromHtml(comment.text).toString().trim();
             if (plainText.isEmpty()) continue;
 
-            TranslationManager.translate(plainText, "auto", targetLang, new TranslationManager.TranslationCallback() {
+            TranslationManager.translate(plainText, "en", targetLang, new TranslationManager.TranslationCallback() {
                 @Override
                 public void onSuccess(String translatedText) {
                     commentTranslations.put(comment.id, translatedText);
@@ -2313,37 +2342,68 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         Context ctx = getContext();
         if (ctx == null || adapter == null || adapter.story == null) return;
 
-        String text = adapter.story.text;
-        if (text == null || text.trim().isEmpty()) {
-            Toast.makeText(ctx, "No text to translate", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        String plainText = Html.fromHtml(text).toString().trim();
-        if (plainText.isEmpty()) {
+        String title = adapter.story.title;
+        if (title == null || title.trim().isEmpty()) {
             Toast.makeText(ctx, "No text to translate", Toast.LENGTH_SHORT).show();
             return;
         }
 
         String targetLang = SettingsUtils.getTranslateTargetLanguage(ctx);
-        Toast.makeText(ctx, "Translating...", Toast.LENGTH_SHORT).show();
-        TranslationManager.translate(plainText, "auto", targetLang, new TranslationManager.TranslationCallback() {
+        boolean overlay = SettingsUtils.DISPLAY_MODE_OVERLAY.equals(SettingsUtils.getTranslateDisplayMode(ctx));
+        if (adapter != null) adapter.setTranslateLoading(true);
+
+        // Translate the title
+        TranslationManager.translate(title.trim(), "en", targetLang, new TranslationManager.TranslationCallback() {
             @Override
             public void onSuccess(String translatedText) {
-                if (!isAdded()) return;
-                new MaterialAlertDialogBuilder(requireContext())
-                        .setTitle("Translation")
-                        .setMessage(translatedText)
-                        .setPositiveButton("OK", null)
-                        .show();
+                if (adapter != null && adapter.story != null) {
+                    adapter.story.title = overlay ? translatedText : title.trim() + "\n" + translatedText;
+                    adapter.notifyItemChanged(0); // refresh header
+                }
+                // Also translate all comments
+                autoTranslateComments();
+                if (adapter != null) adapter.setTranslateLoading(false);
             }
 
             @Override
             public void onFailure(String error) {
-                if (!isAdded()) return;
-                Toast.makeText(ctx, error, Toast.LENGTH_LONG).show();
+                // Still translate comments even if title fails
+                autoTranslateComments();
+                if (adapter != null) adapter.setTranslateLoading(false);
+                if (isAdded()) {
+                    Toast.makeText(ctx, "Title translation failed", Toast.LENGTH_SHORT).show();
+                }
             }
         });
+    }
+
+    public void clickTranslateBodyText() {
+        Context ctx = getContext();
+        if (ctx == null) return;
+
+        if (webViewController.isImmersiveTranslationActive()) {
+            webViewController.stopImmersiveTranslation();
+            if (adapter != null) {
+                adapter.setTranslateBodyButtonState(
+                        SettingsUtils.isTranslationEnabled(ctx) && webViewController.isReaderModeEnabled(), false);
+            }
+            Toast.makeText(ctx, "Translation removed", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (!webViewController.isReaderModeEnabled()) {
+            return; // button should be disabled, but just in case
+        }
+
+        String targetLang = SettingsUtils.getTranslateTargetLanguage(ctx);
+        String displayMode = SettingsUtils.getTranslateDisplayMode(ctx);
+
+        // Show loading state
+        if (adapter != null) {
+            adapter.setTranslateBodyButtonState(true, true);
+        }
+
+        webViewController.startImmersiveTranslation("en", targetLang, displayMode);
     }
 
     public void clickShare(View view) {
@@ -2994,9 +3054,6 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         iconActions.add(new CommentActionItem(COMMENT_ACTION_COPY, "Copy text", R.drawable.ic_content_copy));
         iconActions.add(new CommentActionItem(COMMENT_ACTION_SHARE, "Share link", R.drawable.ic_share));
-        if (SettingsUtils.isTranslationEnabled(ctx)) {
-            iconActions.add(new CommentActionItem(COMMENT_ACTION_TRANSLATE, "Translate", R.drawable.ic_translate));
-        }
         addCommentActionIconRow(actionsContainer, iconActions, comment, oldBookmarked, oldFavorited);
 
         if (hasAccount && !Utils.timeInSecondsMoreThanTwoWeeksAgo(comment.time)) {
@@ -3302,42 +3359,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 ctx.startActivity(replyIntent);
                 break;
 
-            case COMMENT_ACTION_TRANSLATE:
-                translateCommentText(comment);
-                break;
         }
-    }
-
-    private void translateCommentText(Comment comment) {
-        Context ctx = getContext();
-        if (ctx == null) return;
-
-        String plainText = Html.fromHtml(comment.text != null ? comment.text : "").toString().trim();
-        if (plainText.isEmpty()) {
-            Toast.makeText(ctx, "No text to translate", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        String targetLang = SettingsUtils.getTranslateTargetLanguage(ctx);
-
-        Toast.makeText(ctx, "Translating...", Toast.LENGTH_SHORT).show();
-        TranslationManager.translate(plainText, "auto", targetLang, new TranslationManager.TranslationCallback() {
-            @Override
-            public void onSuccess(String translatedText) {
-                if (!isAdded()) return;
-                new MaterialAlertDialogBuilder(requireContext())
-                        .setTitle("Translation")
-                        .setMessage(translatedText)
-                        .setPositiveButton("OK", null)
-                        .show();
-            }
-
-            @Override
-            public void onFailure(String error) {
-                if (!isAdded()) return;
-                Toast.makeText(ctx, error, Toast.LENGTH_LONG).show();
-            }
-        });
     }
 
     private void performCommentActionVote(int action, Comment comment, @Nullable View actionView) {
