@@ -2134,7 +2134,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         adapter.commentsLoaded = true;
         if (updateHeaderAfterLoad) {
-            refreshHeaderAfterStoryLoad(cache);
+            refreshHeaderAfterStoryLoad();
         }
         updateNavigationVisibility();
         recyclerView.post(() -> {
@@ -2146,23 +2146,12 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         });
     }
 
-    private void refreshHeaderAfterStoryLoad(boolean animate) {
+    private void refreshHeaderAfterStoryLoad() {
         if (!isCommentsViewActive()) {
             return;
         }
 
-        if (!animate) {
-            if (!adapter.updateBoundHeaderStoryViews()) {
-                adapter.notifyItemChanged(0);
-            }
-            return;
-        }
-
-        recyclerView.post(() -> {
-            if (isCommentsViewActive()) {
-                adapter.notifyItemChanged(0);
-            }
-        });
+        adapter.updateBoundHeaderStoryViews();
     }
 
     private boolean isCommentsViewActive() {

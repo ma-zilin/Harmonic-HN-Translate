@@ -499,8 +499,6 @@ public class StoriesFragment extends Fragment {
                             oldStory.score = story.score;
                             oldStory.time = story.time;
                             oldStory.url = story.url;
-
-                            adapter.notifyItemChanged(i);
                         }
                         break;
                     }
