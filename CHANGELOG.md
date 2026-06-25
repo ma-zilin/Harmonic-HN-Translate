@@ -1,0 +1,12 @@
+# Changelog
+
+## v3.0.3
+
+- **On-device translation**: ML Kit Translate, English → 50 languages
+- Story list translate button with loading indicator and toggle
+- Comments page translate title + all comments, toggle to remove
+- Reader Mode body text immersive translation (bilingual / overlay)
+- Dedicated Translation settings section
+- Code block auto-skip
+- Header button resize for narrow screens
+- ARM-only ABIs: APK 75MB → 42MB
