@@ -18,6 +18,35 @@ Over nearly 6 years of development, Harmonic has been been accumulating features
 * A large collection of quality of life features such as reader mode, preview images, link previews and much more
 * Strong smooth performance
 
+## Translation Fork
+
+This repository is a fork of the original [Harmonic-HN](https://github.com/SimonHalvdansson/Harmonic-HN) by Simon Halvdansson, with on-device translation features added.
+
+### Changes from Upstream
+
+| Area | Change |
+|------|--------|
+| Settings | Dedicated **Translation** section with enable toggle, target language (50 languages), and bilingual/overlay display mode |
+| Story list | Translate button in header toggles translation for all loaded titles, with loading indicator |
+| Comments page | One-tap translate story title + all comments, toggle to remove and restore original title |
+| Reader mode body | Immersive translation via bottom sheet button using on-device ML Kit |
+| APK size | ARM-only ABIs (removed x86/x86_64), 75MB → 42MB |
+
+### How Translation Works
+
+1. **Model**: Google ML Kit Translate (`com.google.mlkit:translate`), runs entirely on-device for privacy. English → target language. First use downloads a ~30–50 MB model.
+2. **Story list & comments**: Direct API calls to `TranslationManager.translate()`, results stored in a `Map<Integer, String>` keyed by story/comment ID. Bilingual mode appends, overlay mode replaces.
+3. **Body text (immersive)**: `translate_inject.js` injected into WebView traverses the DOM based on block-level tags, collects paragraphs, sends them via `@JavascriptInterface` to native `TranslationManager.translateBatch()`. Results are sent back as JSON and injected into the DOM. Code blocks (`<pre>`, `<code>`) and nav-heavy sections are excluded.
+
+### Translation Features
+
+- **Bilingual mode**: Translated text appears below the original
+- **Overlay mode**: Original text is replaced by the translation
+- **Code block skipping**: Segments with significant `<pre>`/`<code>` content are auto-excluded
+- **Performance**: 25-paragraph cap per page, 100-candidate DOM scan limit
+- **Loading indicators**: Progress spinners on story list and body text translate buttons
+- **Background preload**: Model download starts when a non-English target language is selected
+
 ## Contributing
 
 If you would like to see a change in Harmonic, feel free to open an issue or create a PR. Historically, most PRs are merged and I might make some design changes to make sure Harmonic stays consistent. Try to stay within the general code style of the codebase but I make no claim that the current state is holy by any means. Harmonic is meant to be beautiful from the front more so than the back and user experience is king. With that said, PRs which clean up the code or improve structure are very welcome as well. When a PR adds a new user-facing feature, I will add that feature to the changelog after merging. If you do NOT want your name there, let me know by e.g., writing so in the PR.
