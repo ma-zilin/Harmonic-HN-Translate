@@ -9,15 +9,6 @@
         app:title="Enable translation"
         app:summary="Story list, comments, and reader mode body text using on-device ML Kit. The translate button appears in the bottom sheet when reader mode is active." />
 
-    <SwitchPreferenceCompat
-        app:singleLineTitle="false"
-        app:key="pref_translate_auto_mode"
-        app:defaultValue="false"
-        app:dependency="pref_translate_enabled"
-        app:icon="@drawable/ic_auto_awesome"
-        app:title="Auto-translate comments"
-        app:summary="Automatically translate comments as they load" />
-
     <Preference
         app:singleLineTitle="false"
         app:key="pref_translate_target_language"

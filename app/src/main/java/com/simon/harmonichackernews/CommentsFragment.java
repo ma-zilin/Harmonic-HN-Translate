@@ -202,6 +202,7 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private List<Comment> comments;
     private List<Comment> allComments;
     private final Map<Integer, String> commentTranslations = new HashMap<>();
+    private String originalStoryTitle = null;
     private RequestQueue queue;
     private final Object requestTag = new Object();
     private CommentsRecyclerViewAdapter adapter;
@@ -2281,22 +2282,78 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
 
         comments.clear();
         comments.addAll(nextComments);
+        // Reset translation state for fresh story
+        commentTranslations.clear();
+        originalStoryTitle = null;
         if (adapter != null) {
+            adapter.setCommentTranslations(null);
             adapter.invalidateCommentLookup();
             diffResult.dispatchUpdatesTo(adapter);
             adapter.updateBoundHeaderStoryViews();
         }
         updateNavigationVisibility();
 
-        if (SettingsUtils.isAutoTranslate(getContext())) {
-            autoTranslateComments();
-        }
     }
 
-    private void autoTranslateComments() {
-        Context ctx = getContext();
-        if (ctx == null || comments.isEmpty()) return;
+    public void clickBrowser() {
+        webViewController.openCurrentOrStoryUrlInBrowser();
+    }
 
+    public void clickTranslateStory() {
+        Context ctx = getContext();
+        if (ctx == null || adapter == null || adapter.story == null) return;
+
+        // Toggle: if already translated, remove translations
+        if (!commentTranslations.isEmpty()) {
+            commentTranslations.clear();
+            adapter.setCommentTranslations(null);
+            if (originalStoryTitle != null && adapter.story != null) {
+                adapter.story.title = originalStoryTitle;
+                adapter.notifyItemChanged(0);
+            }
+            originalStoryTitle = null;
+            adapter.setTranslateLoading(false);
+            Toast.makeText(ctx, "Translations removed", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String title = adapter.story.title;
+        if (title == null || title.trim().isEmpty()) {
+            Toast.makeText(ctx, "No text to translate", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        originalStoryTitle = title;
+        String targetLang = SettingsUtils.getTranslateTargetLanguage(ctx);
+        boolean overlay = SettingsUtils.DISPLAY_MODE_OVERLAY.equals(SettingsUtils.getTranslateDisplayMode(ctx));
+        if (adapter != null) adapter.setTranslateLoading(true);
+
+        // Translate the title
+        TranslationManager.translate(title.trim(), "en", targetLang, new TranslationManager.TranslationCallback() {
+            @Override
+            public void onSuccess(String translatedText) {
+                if (adapter != null && adapter.story != null) {
+                    adapter.story.title = overlay ? translatedText : title.trim() + "\n" + translatedText;
+                    adapter.notifyItemChanged(0);
+                }
+                translateComments();
+                if (adapter != null) adapter.setTranslateLoading(false);
+            }
+
+            @Override
+            public void onFailure(String error) {
+                translateComments();
+                if (adapter != null) adapter.setTranslateLoading(false);
+                if (isAdded()) {
+                    Toast.makeText(ctx, "Title translation failed", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+    }
+
+    private void translateComments() {
+        Context ctx = getContext();
+        if (ctx == null) return;
         String targetLang = SettingsUtils.getTranslateTargetLanguage(ctx);
 
         for (Comment comment : comments) {
@@ -2316,54 +2373,9 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                 }
 
                 @Override
-                public void onFailure(String error) {
-                    // silently ignore individual failures in auto mode
-                }
+                public void onFailure(String error) { /* silent */ }
             });
         }
-    }
-
-    public void clickBrowser() {
-        webViewController.openCurrentOrStoryUrlInBrowser();
-    }
-
-    public void clickTranslateStory() {
-        Context ctx = getContext();
-        if (ctx == null || adapter == null || adapter.story == null) return;
-
-        String title = adapter.story.title;
-        if (title == null || title.trim().isEmpty()) {
-            Toast.makeText(ctx, "No text to translate", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        String targetLang = SettingsUtils.getTranslateTargetLanguage(ctx);
-        boolean overlay = SettingsUtils.DISPLAY_MODE_OVERLAY.equals(SettingsUtils.getTranslateDisplayMode(ctx));
-        if (adapter != null) adapter.setTranslateLoading(true);
-
-        // Translate the title
-        TranslationManager.translate(title.trim(), "en", targetLang, new TranslationManager.TranslationCallback() {
-            @Override
-            public void onSuccess(String translatedText) {
-                if (adapter != null && adapter.story != null) {
-                    adapter.story.title = overlay ? translatedText : title.trim() + "\n" + translatedText;
-                    adapter.notifyItemChanged(0); // refresh header
-                }
-                // Also translate all comments
-                autoTranslateComments();
-                if (adapter != null) adapter.setTranslateLoading(false);
-            }
-
-            @Override
-            public void onFailure(String error) {
-                // Still translate comments even if title fails
-                autoTranslateComments();
-                if (adapter != null) adapter.setTranslateLoading(false);
-                if (isAdded()) {
-                    Toast.makeText(ctx, "Title translation failed", Toast.LENGTH_SHORT).show();
-                }
-            }
-        });
     }
 
     public void clickTranslateBodyText() {

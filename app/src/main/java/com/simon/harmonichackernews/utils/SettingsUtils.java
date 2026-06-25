@@ -59,7 +59,6 @@ public class SettingsUtils {
     public static final String PREF_ARCHIVE_REDIRECT_DOMAINS = "pref_archive_redirect_domains";
     public static final String PREF_STORIES_TO_CACHE = "pref_stories_to_cache";
     public static final String PREF_TRANSLATE_ENABLED = "pref_translate_enabled";
-    public static final String PREF_TRANSLATE_AUTO_MODE = "pref_translate_auto_mode";
     public static final String PREF_TRANSLATE_TARGET_LANGUAGE = "pref_translate_target_language";
     public static final String PREF_TRANSLATE_DISPLAY_MODE = "pref_translate_display_mode";
     public static final String DISPLAY_MODE_OVERLAY = "overlay";
@@ -958,10 +957,6 @@ public class SettingsUtils {
 
     public static boolean isTranslationEnabled(Context ctx) {
         return getBooleanPref(PREF_TRANSLATE_ENABLED, false, ctx);
-    }
-
-    public static boolean isAutoTranslate(Context ctx) {
-        return isTranslationEnabled(ctx) && getBooleanPref(PREF_TRANSLATE_AUTO_MODE, false, ctx);
     }
 
     public static String getTranslateTargetLanguage(Context ctx) {

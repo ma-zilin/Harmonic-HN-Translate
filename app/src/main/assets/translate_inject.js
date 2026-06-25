@@ -76,10 +76,10 @@
         var texts = [];
         var nodes = [];
 
-        // Gather all candidate elements
         var all = document.body.getElementsByTagName('*');
         var candidates = [];
-        for (var i = 0; i < all.length; i++) {
+        var MAX_CANDIDATES = 100; // more than enough, stop early
+        for (var i = 0; i < all.length && candidates.length < MAX_CANDIDATES; i++) {
             var el = all[i];
             var tag = el.tagName.toLowerCase();
             if (!BLOCK_TAGS[tag]) continue;
@@ -124,7 +124,37 @@
             nodes.push(cel);
         }
 
+        // Cap to keep translation fast (visible content = ~25 paragraphs)
+        var MAX = 25;
+        if (texts.length > MAX) {
+            texts = texts.slice(0, MAX);
+            nodes = nodes.slice(0, MAX);
+        }
+
         return { texts: texts, nodes: nodes };
+    }
+
+    function translatePage(fromLang, toLang, mode) {
+        if (active) return;
+
+        var result = collectParagraphs();
+        if (result.texts.length === 0) {
+            onError('No text paragraphs found on this page');
+            return;
+        }
+
+        translatedNodes = result.nodes;
+        translatedOriginals = new Array(result.nodes.length);
+        activeMode = mode || MODE_BILINGUAL;
+        active = true;
+
+        var json = JSON.stringify(result.texts);
+        try {
+            HarmonicTranslation.translateBatch(json, fromLang, toLang);
+        } catch (e) {
+            onError('Translation bridge unavailable: ' + e.message);
+            active = false;
+        }
     }
 
     // ── injection ───────────────────────────────────────────────────────────

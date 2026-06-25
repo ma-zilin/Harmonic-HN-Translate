@@ -79,7 +79,7 @@
 
             <FrameLayout
                 android:layout_marginEnd="-4dp"
-                android:layout_width="48dp"
+                android:layout_width="44dp"
                 android:layout_height="48dp">
 
                 <ImageButton
@@ -104,7 +104,7 @@
             <FrameLayout
                 android:id="@+id/stories_header_translate_container"
                 android:layout_marginEnd="-4dp"
-                android:layout_width="44dp"
+                android:layout_width="40dp"
                 android:layout_height="48dp"
                 android:visibility="gone">
 
@@ -133,7 +133,7 @@
                 android:src="@drawable/ic_more_vert"
                 android:contentDescription="More options"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:layout_width="48dp"
+                android:layout_width="44dp"
                 android:layout_height="48dp"    />
 
         </LinearLayout>
