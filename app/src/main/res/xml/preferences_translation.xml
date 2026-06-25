@@ -10,6 +10,11 @@
         app:summary="Story list, comments, and reader mode body text using on-device ML Kit. The translate button appears in the bottom sheet when reader mode is active." />
 
     <Preference
+        app:key="pref_translate_model_notice"
+        app:selectable="false"
+        app:title="The first translation may be slow as the language model (~30–50 MB) is downloaded. Subsequent translations will be much faster." />
+
+    <Preference
         app:singleLineTitle="false"
         app:key="pref_translate_target_language"
         app:dependency="pref_translate_enabled"
