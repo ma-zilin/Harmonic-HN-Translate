@@ -15,4 +15,5 @@ deploymentTargetDropDown.xml
 *.pepk
 
 # kotlin
-.kotlin/
+.kotlin/Harmonic-v3.0.3.apk
+.vscode/
