@@ -912,6 +912,10 @@ class CommentsWebViewController {
         if (webView == null) {
             return;
         }
+        // Safety: resume global WebView timers in case they were paused
+        // by a previous WebView's destroy(). pauseTimers() is a global
+        // operation that affects all WebViews in the process.
+        webView.resumeTimers();
         initializedWebView = true;
         BottomSheetBehavior.from(bottomSheet).setDraggable(true);
         webViewBottomSheetCallback = new BottomSheetBehavior.BottomSheetCallback() {
@@ -1561,7 +1565,6 @@ class CommentsWebViewController {
                     webViewToDestroy.onPause();
                     webViewToDestroy.removeAllViews();
                     webViewToDestroy.destroyDrawingCache();
-                    webViewToDestroy.pauseTimers();
                 }
                 webViewToDestroy.destroy();
             } catch (RuntimeException e) {
