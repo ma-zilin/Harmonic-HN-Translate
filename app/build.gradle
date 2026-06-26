@@ -115,5 +115,6 @@ tasks.register('copyDebugApk', Copy) {
     into rootDir
     rename { "Harmonic-Translate-v${android.defaultConfig.versionName}.apk" }
     notCompatibleWithConfigurationCache 'by design'
+    doNotTrackState 'project root has locked .gradle files'
 }
 
