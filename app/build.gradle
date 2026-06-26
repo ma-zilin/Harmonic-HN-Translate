@@ -105,3 +105,13 @@ java {
         languageVersion = JavaLanguageVersion.of(21)
     }
 }
+
+// Rename APK to a professional name
+tasks.register('renameDebugApk', Copy) {
+    dependsOn 'assembleDebug'
+    from "$buildDir/outputs/apk/debug"
+    include '*.apk'
+    into "$rootDir"
+    rename { "Harmonic-Translate-v${versionName}.apk" }
+    description "Copy debug APK to project root with clean name: Harmonic-Translate-v${versionName}.apk"
+}
