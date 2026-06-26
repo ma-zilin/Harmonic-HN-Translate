@@ -2378,21 +2378,35 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         String plainText = Html.fromHtml(text).toString().trim();
         if (plainText.isEmpty()) return;
 
-        TranslationManager.translate(plainText, "en", targetLang, new TranslationManager.TranslationCallback() {
-            @Override
-            public void onSuccess(String translatedText) {
-                translatedStoryText = translatedText;
-                if (adapter != null) {
-                    adapter.setTranslatedStoryText(translatedStoryText);
-                    adapter.notifyItemChanged(0);
+        // Split into paragraphs and translate each separately to preserve breaks
+        final String[] paragraphs = plainText.split("\n\n");
+        if (paragraphs.length <= 1) {
+            TranslationManager.translate(plainText, "en", targetLang, new TranslationManager.TranslationCallback() {
+                @Override
+                public void onSuccess(String translatedText) {
+                    translatedStoryText = translatedText;
+                    if (adapter != null) {
+                        adapter.setTranslatedStoryText(translatedStoryText);
+                        adapter.notifyItemChanged(0);
+                    }
                 }
-            }
-
-            @Override
-            public void onFailure(String error) {
-                // body text translation failed silently — title + comments still work
-            }
-        });
+                @Override
+                public void onFailure(String error) { /* silent */ }
+            });
+        } else {
+            TranslationManager.translateBatch(paragraphs, "en", targetLang, new TranslationManager.BatchCallback() {
+                @Override
+                public void onComplete(String[] translations) {
+                    translatedStoryText = TextUtils.join("<br><br>", translations);
+                    if (adapter != null) {
+                        adapter.setTranslatedStoryText(translatedStoryText);
+                        adapter.notifyItemChanged(0);
+                    }
+                }
+                @Override
+                public void onError(String error) { /* silent */ }
+            });
+        }
     }
 
     private void translateComments() {
@@ -2407,18 +2421,33 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             String plainText = Html.fromHtml(comment.text).toString().trim();
             if (plainText.isEmpty()) continue;
 
-            TranslationManager.translate(plainText, "en", targetLang, new TranslationManager.TranslationCallback() {
-                @Override
-                public void onSuccess(String translatedText) {
-                    commentTranslations.put(comment.id, translatedText);
-                    if (adapter != null) {
-                        adapter.setCommentTranslations(new HashMap<>(commentTranslations));
+            // Split into paragraphs and translate each separately to preserve breaks
+            final String[] paragraphs = plainText.split("\n\n");
+            if (paragraphs.length <= 1) {
+                TranslationManager.translate(plainText, "en", targetLang, new TranslationManager.TranslationCallback() {
+                    @Override
+                    public void onSuccess(String translatedText) {
+                        commentTranslations.put(comment.id, translatedText);
+                        if (adapter != null) {
+                            adapter.setCommentTranslations(new HashMap<>(commentTranslations));
+                        }
                     }
-                }
-
-                @Override
-                public void onFailure(String error) { /* silent */ }
-            });
+                    @Override
+                    public void onFailure(String error) { /* silent */ }
+                });
+            } else {
+                TranslationManager.translateBatch(paragraphs, "en", targetLang, new TranslationManager.BatchCallback() {
+                    @Override
+                    public void onComplete(String[] translations) {
+                        commentTranslations.put(comment.id, TextUtils.join("<br><br>", translations));
+                        if (adapter != null) {
+                            adapter.setCommentTranslations(new HashMap<>(commentTranslations));
+                        }
+                    }
+                    @Override
+                    public void onError(String error) { /* silent */ }
+                });
+            }
         }
     }
 

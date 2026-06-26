@@ -2,6 +2,7 @@
 
 ## v3.0.3
 
+- Fix paragraph breaks lost in translated comments and story text (split by `\n\n`, batch translate per paragraph)
 - Fix Reader Mode blank screen on second article (removed global `pauseTimers()` in WebView destroy)
 - Fix Reader Mode toggle clearing translation state incorrectly
 - Fix Ask HN story detail text not being translated
