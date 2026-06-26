@@ -33,4 +33,9 @@
         app:entries="@array/translate_display_mode_entries"
         app:entryValues="@array/translate_display_mode_values" />
 
+    <Preference
+        app:key="pref_translate_powered_by"
+        app:selectable="false"
+        app:title="Powered by Google ML Kit Translate" />
+
 </PreferenceScreen>

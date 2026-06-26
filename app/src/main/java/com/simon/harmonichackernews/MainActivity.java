@@ -331,7 +331,7 @@ public class MainActivity extends BaseActivity implements StoriesFragment.StoryC
                 .setNeutralButton("GitHub", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
-                        String url = "https://github.com/SimonHalvdansson/Harmonic-HN";
+                        String url = "https://github.com/ma-zilin/Harmonic-HN-Translate";
                         Intent intent = new Intent(Intent.ACTION_VIEW);
                         intent.setData(Uri.parse(url));
                         startActivity(intent);

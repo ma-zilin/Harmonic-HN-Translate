@@ -42,7 +42,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:fontFamily="@font/google_sans_flex_rounded"
-            android:text="I hope you'll love the app and feel how much care was put into creating it. If you have an issue or want to submit a PR, you can visit the GitHub repository.\n\nBefore we get started you can select a UI preset below."
+            android:text="This is a community fork of Harmonic that adds on-device translation powered by Google ML Kit. All credit for the original app goes to Simon Halvdansson and the open-source contributors.\n\nIf you have an issue or want to submit a PR, visit the fork's GitHub repository. Before we get started, select a UI preset below."
             android:textColor="?attr/colorOnSurfaceVariant"
             android:textSize="14sp" />
 

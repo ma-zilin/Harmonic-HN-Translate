@@ -60,7 +60,7 @@ public class DialogHostActivity extends AppCompatActivity implements WelcomeDial
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
                         Intent intent = new Intent(Intent.ACTION_VIEW);
-                        intent.setData(Uri.parse("https://github.com/SimonHalvdansson/Harmonic-HN"));
+                        intent.setData(Uri.parse("https://github.com/ma-zilin/Harmonic-HN-Translate"));
                         startActivity(intent);
                     }
                 })

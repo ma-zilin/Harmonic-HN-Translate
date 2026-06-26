@@ -47,8 +47,8 @@ public class WelcomeDialogFragment extends AppCompatDialogFragment {
     public Dialog onCreateDialog(Bundle savedInstanceState) {
         WelcomeDialogBinding binding = WelcomeDialogBinding.inflate(LayoutInflater.from(requireContext()));
         binding.welcomeDialogTitle.setText(shouldShowVersionTitle()
-                ? "Welcome to Harmonic for Hacker News 3.0"
-                : "Welcome to Harmonic for Hacker News");
+                ? "Welcome to Harmonic with Translation"
+                : "Welcome to Harmonic with Translation");
         ViewCompat.setAccessibilityHeading(binding.welcomeDialogTitle, true);
         setupStoryPreview(binding);
         binding.welcomeDialogPresetGroup.addOnButtonCheckedListener((group, checkedId, isChecked) -> {

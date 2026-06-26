@@ -68,7 +68,7 @@
             android:fontFamily="@font/product_sans"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
-            android:text="Harmonic for Hacker News is developed by me, Simon Halvdansson, although since 2023 the app is open source. The libraries used are listed below together with Materialistic by Hidroh which I've used for some network code and PDF integration.\n\nThe name 'Harmonic' comes from me choosing to study harmonic analysis at around the time of Harmonic's inception. I guess you could say something about 'waves' and 'news' but that's the rationale. Since then, I've finished my PhD in harmonic analysis and don't have the same amount of time to work on Harmonic but it's still my favorite pet project and I use the app daily. Seeing others contribute, open meaningful issues on GitHub or just tell me they like the app is always super nice and I'm very thankful to the community for helping with the maintenance. Together I think we can keep Harmonic the (in my opinion) best Hacker News client for Android!"/>
+            android:text="Harmonic was originally created by Simon Halvdansson — a beautiful, mature Hacker News client for Android built with care over many years. This is a community fork that adds on-device translation powered by Google ML Kit, supporting 50+ languages for story titles, comments, and reader mode body text.\n\nThe original Harmonic remains Simon's work of passion, and this fork is deeply grateful for the solid foundation he built. All credit for the core app goes to Simon and the open-source contributors. The translation module is maintained separately at the fork repository below."/>
 
         <TextView
             android:id="@+id/about_licenses_header"
@@ -174,6 +174,14 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"/>
 
+        <TextView
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:fontFamily="@font/product_sans"
+            android:text="• ML Kit Translate by Google - Apache 2.0"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/about_github"
             android:textSize="14sp"
@@ -185,7 +193,20 @@
             app:iconTint="?attr/storyColorNormal"
             android:layout_width="match_parent"
             android:layout_height="56dp"
-            android:text="Harmonic on GitHub" />
+            android:text="Original on GitHub" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/about_fork_github"
+            android:textSize="14sp"
+            android:layout_marginTop="8dp"
+            android:fontFamily="@font/product_sans_bold"
+            style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
+            app:icon="@drawable/ic_link_preview_github"
+            android:textColor="?attr/storyColorNormal"
+            app:iconTint="?attr/storyColorNormal"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="Translation Fork on GitHub" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/about_changelog"

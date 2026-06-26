@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Harmonic</string>
+    <string name="app_name">Harmonic with Translation</string>
     <string-array name="sorting_options">
         <item>Top Stories</item>
         <item>Last 24 hours</item>

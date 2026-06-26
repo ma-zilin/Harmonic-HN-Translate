@@ -50,7 +50,8 @@ public class AboutFragment extends Fragment {
                 : "Version " + BuildConfig.VERSION_NAME;
         binding.aboutVersion.setText(versionText);
 
-        binding.aboutGithub.setOnClickListener(v -> openGithub());
+        binding.aboutGithub.setOnClickListener(v -> openOriginalGithub());
+        binding.aboutForkGithub.setOnClickListener(v -> openForkGithub());
         binding.aboutChangelog.setOnClickListener(v -> openChangelog());
         binding.aboutPrivacy.setOnClickListener(v -> openPrivacy());
     }
@@ -88,8 +89,15 @@ public class AboutFragment extends Fragment {
         }
     }
 
-    private void openGithub() {
+    private void openOriginalGithub() {
         String url = "https://github.com/SimonHalvdansson/Harmonic-HN";
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setData(Uri.parse(url));
+        startActivity(intent);
+    }
+
+    private void openForkGithub() {
+        String url = "https://github.com/ma-zilin/Harmonic-HN-Translate";
         Intent intent = new Intent(Intent.ACTION_VIEW);
         intent.setData(Uri.parse(url));
         startActivity(intent);
