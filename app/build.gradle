@@ -106,16 +106,14 @@ java {
     }
 }
 
-// Copy APK to project root with a professional name after build
-afterEvaluate {
-    tasks.named('assembleDebug').configure {
-        doLast {
-            copy {
-                from layout.buildDirectory.dir("outputs/apk/debug")
-                include '*.apk'
-                into rootDir
-                rename { "Harmonic-Translate-v${android.defaultConfig.versionName}.apk" }
-            }
-        }
-    }
+// Copy debug APK to project root with clean name.
+// Usage: ./gradlew copyDebugApk
+tasks.register('copyDebugApk', Copy) {
+    dependsOn 'assembleDebug'
+    from layout.buildDirectory.dir('outputs/apk/debug')
+    include '*.apk'
+    into rootDir
+    rename { "Harmonic-Translate-v${android.defaultConfig.versionName}.apk" }
+    notCompatibleWithConfigurationCache 'by design'
 }
+
