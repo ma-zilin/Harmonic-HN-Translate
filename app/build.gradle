@@ -108,13 +108,19 @@ java {
 
 // Copy debug APK to project root with clean name.
 // Usage: ./gradlew copyDebugApk
-tasks.register('copyDebugApk', Copy) {
+tasks.register('copyDebugApk') {
     dependsOn 'assembleDebug'
-    from layout.buildDirectory.dir('outputs/apk/debug')
-    include '*.apk'
-    into rootDir
-    rename { "Harmonic-Translate-v${android.defaultConfig.versionName}.apk" }
+    doLast {
+        def apkDir = layout.buildDirectory.dir('outputs/apk/debug').get().asFile
+        def apkFile = apkDir.listFiles()?.find { it.name.endsWith('.apk') }
+        if (apkFile) {
+            def dest = new File(rootDir, "Harmonic-Translate-v${android.defaultConfig.versionName}.apk")
+            dest.bytes = apkFile.bytes
+            println "APK copied to: ${dest.absolutePath}"
+        } else {
+            println "No APK found in $apkDir"
+        }
+    }
     notCompatibleWithConfigurationCache 'by design'
-    doNotTrackState 'project root has locked .gradle files'
 }
 
