@@ -106,6 +106,8 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     private final Map<Integer, Boolean> commentVisibilityById = new HashMap<>();
     private final Map<Integer, String> hackerNewsReferenceTitlesByItemId = new HashMap<>();
     private Map<Integer, String> commentTranslations = new HashMap<>();
+    @Nullable
+    private String translatedStoryText;
     private boolean translateOverlay = false;
     private final Set<Integer> requestedHackerNewsReferenceTitleItemIds = new HashSet<>();
     private int commentLookupSize = -1;
@@ -1634,6 +1636,15 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         }
 
         bindReferenceLinks(headerViewHolder.referenceLinksContainer, referenceLinks);
+
+        // Apply story text translation if available
+        if (!TextUtils.isEmpty(bodyHtml) && !TextUtils.isEmpty(translatedStoryText)) {
+            if (translateOverlay) {
+                headerViewHolder.textView.setHtml(translatedStoryText);
+            } else {
+                headerViewHolder.textView.setHtml(bodyHtml + "<br><br>" + translatedStoryText);
+            }
+        }
     }
 
     private void bindCommentText(ItemViewHolder itemViewHolder, Comment comment) {
@@ -3079,6 +3090,10 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
     public void setCommentTranslations(Map<Integer, String> translations) {
         this.commentTranslations = translations != null ? translations : new HashMap<>();
         notifyDataSetChanged();
+    }
+
+    public void setTranslatedStoryText(@Nullable String text) {
+        this.translatedStoryText = text;
     }
 
     public void setTranslateDisplayMode(boolean overlay) {

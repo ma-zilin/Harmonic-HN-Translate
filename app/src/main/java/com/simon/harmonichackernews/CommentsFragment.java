@@ -203,6 +203,8 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
     private List<Comment> allComments;
     private final Map<Integer, String> commentTranslations = new HashMap<>();
     private String originalStoryTitle = null;
+    private String originalStoryText = null;
+    private String translatedStoryText = null;
     private RequestQueue queue;
     private final Object requestTag = new Object();
     private CommentsRecyclerViewAdapter adapter;
@@ -2285,8 +2287,11 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
         // Reset translation state for fresh story
         commentTranslations.clear();
         originalStoryTitle = null;
+        originalStoryText = null;
+        translatedStoryText = null;
         if (adapter != null) {
             adapter.setCommentTranslations(null);
+            adapter.setTranslatedStoryText(null);
             adapter.invalidateCommentLookup();
             diffResult.dispatchUpdatesTo(adapter);
             adapter.updateBoundHeaderStoryViews();
@@ -2309,9 +2314,17 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
             adapter.setCommentTranslations(null);
             if (originalStoryTitle != null && adapter.story != null) {
                 adapter.story.title = originalStoryTitle;
+            }
+            if (originalStoryText != null && adapter.story != null) {
+                adapter.story.text = originalStoryText;
+            }
+            if (adapter != null) {
+                adapter.setTranslatedStoryText(null);
                 adapter.notifyItemChanged(0);
             }
             originalStoryTitle = null;
+            originalStoryText = null;
+            translatedStoryText = null;
             adapter.setTranslateLoading(false);
             Toast.makeText(ctx, "Translations removed", Toast.LENGTH_SHORT).show();
             return;
@@ -2336,17 +2349,48 @@ public class CommentsFragment extends Fragment implements CommentsRecyclerViewAd
                     adapter.story.title = overlay ? translatedText : title.trim() + "\n" + translatedText;
                     adapter.notifyItemChanged(0);
                 }
+                translateStoryTextIfPresent();
                 translateComments();
                 if (adapter != null) adapter.setTranslateLoading(false);
             }
 
             @Override
             public void onFailure(String error) {
+                translateStoryTextIfPresent();
                 translateComments();
                 if (adapter != null) adapter.setTranslateLoading(false);
                 if (isAdded()) {
                     Toast.makeText(ctx, "Title translation failed", Toast.LENGTH_SHORT).show();
                 }
+            }
+        });
+    }
+
+    private void translateStoryTextIfPresent() {
+        Context ctx = getContext();
+        if (ctx == null || adapter == null || adapter.story == null) return;
+        String text = adapter.story.text;
+        if (text == null || text.trim().isEmpty()) return;
+
+        originalStoryText = text;
+        String targetLang = SettingsUtils.getTranslateTargetLanguage(ctx);
+        boolean overlay = SettingsUtils.DISPLAY_MODE_OVERLAY.equals(SettingsUtils.getTranslateDisplayMode(ctx));
+        String plainText = Html.fromHtml(text).toString().trim();
+        if (plainText.isEmpty()) return;
+
+        TranslationManager.translate(plainText, "en", targetLang, new TranslationManager.TranslationCallback() {
+            @Override
+            public void onSuccess(String translatedText) {
+                translatedStoryText = translatedText;
+                if (adapter != null) {
+                    adapter.setTranslatedStoryText(translatedStoryText);
+                    adapter.notifyItemChanged(0);
+                }
+            }
+
+            @Override
+            public void onFailure(String error) {
+                // body text translation failed silently — title + comments still work
             }
         });
     }

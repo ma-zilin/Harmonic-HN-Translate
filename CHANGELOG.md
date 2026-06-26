@@ -3,6 +3,8 @@
 ## v3.0.3
 
 - Fix Reader Mode blank screen on second article (removed global `pauseTimers()` in WebView destroy)
+- Fix Reader Mode toggle clearing translation state incorrectly
+- Fix Ask HN story detail text not being translated
 - **On-device translation**: ML Kit Translate, English → 50 languages
 - Story list translate button with loading indicator and toggle
 - Comments page translate title + all comments, toggle to remove

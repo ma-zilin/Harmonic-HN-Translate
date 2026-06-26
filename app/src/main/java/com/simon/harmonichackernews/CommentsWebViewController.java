@@ -490,9 +490,23 @@ class CommentsWebViewController {
             return;
         }
 
-        String command = script
-                + "\nHarmonicReaderMode.setTheme(" + getReaderModeThemeJson(context) + ");"
-                + "\nHarmonicReaderMode." + (enable ? "enable" : "disable") + "();";
+        // If disabling Reader Mode while translation is active, reset both the
+        // Java and JS translation state before the DOM is replaced. We call
+        // restorePage() to clear the JS-side active flag (manipulating spans
+        // that are about to be destroyed is harmless — restoreBilingual just
+        // does querySelectorAll and removeChild).
+        final String command;
+        if (!enable && translateActive) {
+            translateActive = false;
+            command = script
+                    + "\nHarmonicReaderMode.setTheme(" + getReaderModeThemeJson(context) + ");"
+                    + "\nHarmonicTranslate.restorePage();"
+                    + "\nHarmonicReaderMode.disable();";
+        } else {
+            command = script
+                    + "\nHarmonicReaderMode.setTheme(" + getReaderModeThemeJson(context) + ");"
+                    + "\nHarmonicReaderMode." + (enable ? "enable" : "disable") + "();";
+        }
         WebView targetWebView = webView;
         int generation = webViewLoadGeneration;
         targetWebView.evaluateJavascript(command, result -> {
